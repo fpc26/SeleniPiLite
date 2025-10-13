@@ -1,0 +1,4 @@
+pillow>=10
+skyfield>=1.53
+numpy>=1.26
+sgp4>=2.20

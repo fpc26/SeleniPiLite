@@ -2,10 +2,12 @@ import sys
 import os
 import datetime
 import math
+import argparse
 from zoneinfo import ZoneInfo
 from skyfield.api import load, wgs84
 from skyfield import almanac
 from PIL import Image, ImageDraw, ImageFont
+from display_backend import FileBackend, WaveshareEPD2in13Backend
 
 # Optional: Test with specific date (set to None for current date)
 test_date = None  # e.g., datetime.date(2025, 9, 21)
@@ -125,24 +127,41 @@ def draw_moon_phase(draw: ImageDraw.ImageDraw, center_x: int, center_y: int, rad
 	draw.ellipse(bbox_shadow, fill=255)  # White fill to cover dark part
 
 
-def main():
+def parse_args(argv: list[str]) -> argparse.Namespace:
+	parser = argparse.ArgumentParser(description="Lunar info renderer with pluggable display backend")
+	parser.add_argument("--date", help="ISO date (YYYY-MM-DD) to render; default today", default=None)
+	parser.add_argument("--backend", choices=["file", "epd"], default="file", help="Output backend: file (PNG) or epd (Waveshare 2.13\")")
+	parser.add_argument("--output", "-o", default="lunar_output.png", help="Output PNG path when using file backend")
+	parser.add_argument("--rotate", type=int, default=0, help="Rotate output clockwise in degrees (0/90/180/270)")
+	parser.add_argument("--epd-variant", default="auto", help="Waveshare 2.13 variant: auto, V4, V3, V2, V1")
+	parser.add_argument("--no-sleep", action="store_true", help="Do not put the EPD to sleep after rendering")
+	return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None):
+	args = parse_args(argv or sys.argv[1:])
+
 	tz = ZoneInfo(TZ_NAME)
-	today = test_date if test_date else datetime.date.today()
+	if args.date:
+		y, m, d = map(int, args.date.split("-"))
+		chosen_date = datetime.date(y, m, d)
+	else:
+		chosen_date = test_date if test_date else datetime.date.today()
 
 	# Load Skyfield resources
 	ts, eph = load_ephemeris()
 
 	# Phase calculations
-	phase_deg = phase_angle_deg(eph, ts, today, tz)
+	phase_deg = phase_angle_deg(eph, ts, chosen_date, tz)
 	illum_pct = round((1 - math.cos(math.radians(phase_deg))) / 2 * 100)
 	phase_desc = phase_description(phase_deg)
 
 	# Rise/set calculations
-	rise, set_time = moonrise_moonset_for_date(eph, ts, LATITUDE, LONGITUDE, today, tz)
+	rise, set_time = moonrise_moonset_for_date(eph, ts, LATITUDE, LONGITUDE, chosen_date, tz)
 	rise_str = rise.strftime("%H:%M") if rise else "N/A"
 	set_str = set_time.strftime("%H:%M") if set_time else "N/A"
 
-	# Simulate 2.13" display (250x122 resolution, B&W)
+	# Canvas for 2.13" display (250x122 resolution, B&W)
 	image = Image.new('1', (250, 122), 255)  # White background
 	draw = ImageDraw.Draw(image)
 
@@ -155,7 +174,7 @@ def main():
 		font_small = ImageFont.load_default()
 
 	# Draw content
-	draw.text((5, 5), today.strftime("%Y-%m-%d"), font=font_large, fill=0)
+	draw.text((5, 5), chosen_date.strftime("%Y-%m-%d"), font=font_large, fill=0)
 	draw.text((5, 25), f"Phase: {phase_desc}", font=font_small, fill=0)
 	draw.text((5, 40), f"Illum: {illum_pct}%", font=font_small, fill=0)
 	draw.text((5, 55), f"Rise: {rise_str}", font=font_small, fill=0)
@@ -164,12 +183,25 @@ def main():
 	# Draw moon
 	draw_moon_phase(draw, 190, 80, 30, phase_deg)
 
-	# Save PNG
-	image.save("lunar_output.png")
+	# Choose backend
+	if args.backend == "file":
+		backend = FileBackend(path=args.output)
+	else:
+		backend = WaveshareEPD2in13Backend(variant=args.epd_variant, rotate=args.rotate, sleep_after=not args.no_sleep)
 
-	print(f"Lunar info for {today} @ ({LATITUDE}, {LONGITUDE}) [{TZ_NAME}]: {phase_desc} ({illum_pct}% illum, phase: {phase_deg:.1f}°)")
+	# Apply rotation at the backend level; for file backend we can rotate here to keep the saved file matching expectation
+	if args.backend == "file" and args.rotate:
+		rotated = image.rotate(-args.rotate, expand=True)
+		backend.render(rotated)
+	else:
+		backend.render(image)
+
+	print(f"Lunar info for {chosen_date} @ ({LATITUDE}, {LONGITUDE}) [{TZ_NAME}]: {phase_desc} ({illum_pct}% illum, phase: {phase_deg:.1f}°)")
 	print(f"Moon rise: {rise_str}, set: {set_str}")
-	print("Output saved as lunar_output.png")
+	if args.backend == "file":
+		print(f"Output saved as {args.output}")
+	else:
+		print("Output sent to Waveshare 2.13\" e-ink display")
 
 
 if __name__ == "__main__":
