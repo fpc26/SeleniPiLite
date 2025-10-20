@@ -74,12 +74,11 @@ class WaveshareEPD2in13Backend(DisplayBackend):
         candidate_paths: list[str] = []
         env_path = os.environ.get("EPD_LIB_PATH")
         if env_path:
-            # Accept both lib and lib/waveshare_epd
-            candidate_paths.append(env_path)
-            candidate_paths.append(os.path.join(env_path, "waveshare_epd"))
-            # If EPD_LIB_PATH points to .../waveshare_epd, also include its parent lib
-            if env_path.endswith("waveshare_epd"):
-                candidate_paths.append(os.path.dirname(env_path))
+            # Normalize: if EPD_LIB_PATH points to .../waveshare_epd, use its parent lib folder
+            base_path = env_path.rstrip(os.sep)
+            if os.path.basename(base_path) == "waveshare_epd":
+                base_path = os.path.dirname(base_path)
+            candidate_paths.append(base_path)
 
         # Consider both folder name variants used by the repo
         repo_variants = ["RaspberryPi_Jetson_Nano", "RaspberryPi_JetsonNano"]
@@ -87,8 +86,8 @@ class WaveshareEPD2in13Backend(DisplayBackend):
             for variant in repo_variants:
                 lib_path = os.path.join(base, "e-Paper", variant, "python", "lib")
                 candidate_paths.append(lib_path)
-                candidate_paths.append(os.path.join(lib_path, "waveshare_epd"))
-        added_paths = []
+
+        added_paths: list[str] = []
         for p in candidate_paths:
             if p and os.path.isdir(p) and p not in sys.path:
                 sys.path.insert(0, p)

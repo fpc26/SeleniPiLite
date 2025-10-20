@@ -79,7 +79,7 @@ echo "[6/7] Installing project requirements and Raspberry Pi deps"
 # GPIO/SPI modules via pip so they are available inside venv
 "$VENV_PIP" install --prefer-binary --only-binary=:all: \
   --extra-index-url https://www.piwheels.org/simple \
-  RPi.GPIO spidev
+  RPi.GPIO spidev gpiozero
 
 echo "Installing Waveshare EPD driver (pip)"
 if ! "$VENV_PIP" install --prefer-binary --only-binary=:all: \
