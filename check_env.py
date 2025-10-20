@@ -49,11 +49,19 @@ def _check_spi_nodes() -> Tuple[bool, str]:
 
 def _discover_epd_paths() -> list[str]:
     proj_root = os.path.dirname(os.path.abspath(__file__))
-    candidates = [
-        os.environ.get("EPD_LIB_PATH", ""),
-        os.path.join(proj_root, "e-Paper", "RaspberryPi_Jetson_Nano", "python", "lib"),
-        os.path.expanduser(os.path.join("~", "e-Paper", "RaspberryPi_Jetson_Nano", "python", "lib")),
-    ]
+    variants = ["RaspberryPi_Jetson_Nano", "RaspberryPi_JetsonNano"]
+    candidates: list[str] = []
+    env_path = os.environ.get("EPD_LIB_PATH", "")
+    if env_path:
+        candidates.append(env_path)
+        candidates.append(os.path.join(env_path, "waveshare_epd"))
+        if env_path.endswith("waveshare_epd"):
+            candidates.append(os.path.dirname(env_path))
+    for base in [proj_root, os.path.expanduser(os.path.join("~"))]:
+        for v in variants:
+            lib = os.path.join(base, "e-Paper", v, "python", "lib")
+            candidates.append(lib)
+            candidates.append(os.path.join(lib, "waveshare_epd"))
     return [p for p in candidates if p and os.path.isdir(p)]
 
 
@@ -75,7 +83,12 @@ def main() -> int:
             sys.path.insert(0, p)
             added.append(p)
 
-    for mod in ["epd2in13_V4", "epd2in13_V3", "epd2in13_V2", "epd2in13"]:
+    # Try both flat and namespaced module imports
+    for mod in [
+        "epd2in13_V4", "epd2in13_V3", "epd2in13_V2", "epd2in13",
+        "waveshare_epd.epd2in13_V4", "waveshare_epd.epd2in13_V3",
+        "waveshare_epd.epd2in13_V2", "waveshare_epd.epd2in13",
+    ]:
         ok, msg = _check_module(mod)
         status = "OK" if ok else "FAIL"
         print(f"{mod:12s}: {status:4s} - {msg}")

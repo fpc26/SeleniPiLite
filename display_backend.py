@@ -71,16 +71,23 @@ class WaveshareEPD2in13Backend(DisplayBackend):
     def _load_driver(self) -> None:
         # Attempt to discover and add Waveshare e-Paper python lib to sys.path
         proj_root = os.path.dirname(os.path.abspath(__file__))
-        candidate_paths = []
+        candidate_paths: list[str] = []
         env_path = os.environ.get("EPD_LIB_PATH")
         if env_path:
+            # Accept both lib and lib/waveshare_epd
             candidate_paths.append(env_path)
-        candidate_paths.extend(
-            [
-                os.path.join(proj_root, "e-Paper", "RaspberryPi_Jetson_Nano", "python", "lib"),
-                os.path.expanduser(os.path.join("~", "e-Paper", "RaspberryPi_Jetson_Nano", "python", "lib")),
-            ]
-        )
+            candidate_paths.append(os.path.join(env_path, "waveshare_epd"))
+            # If EPD_LIB_PATH points to .../waveshare_epd, also include its parent lib
+            if env_path.endswith("waveshare_epd"):
+                candidate_paths.append(os.path.dirname(env_path))
+
+        # Consider both folder name variants used by the repo
+        repo_variants = ["RaspberryPi_Jetson_Nano", "RaspberryPi_JetsonNano"]
+        for base in [proj_root, os.path.expanduser("~")]:
+            for variant in repo_variants:
+                lib_path = os.path.join(base, "e-Paper", variant, "python", "lib")
+                candidate_paths.append(lib_path)
+                candidate_paths.append(os.path.join(lib_path, "waveshare_epd"))
         added_paths = []
         for p in candidate_paths:
             if p and os.path.isdir(p) and p not in sys.path:
@@ -130,6 +137,7 @@ class WaveshareEPD2in13Backend(DisplayBackend):
                 "  Place it at either: ./e-Paper (next to this project) or ~/e-Paper,\n"
                 "  or set EPD_LIB_PATH to its python lib, e.g.:\n"
                 "    export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib\n"
+                "    or EPD_LIB_PATH=~/e-Paper/RaspberryPi_JetsonNano/python/lib\n"
                 "  Then rerun this script.\n"
                 "  Community packages like 'waveshare-epd' may also work on some platforms.\n"
                 "- On Raspberry Pi: sudo raspi-config -> Interface Options -> SPI: Enable\n"
