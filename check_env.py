@@ -47,6 +47,16 @@ def _check_spi_nodes() -> Tuple[bool, str]:
         return False, f"found {', '.join(found)} but insufficient permissions (try adding user to 'spi' group or run with sudo)"
 
 
+def _discover_epd_paths() -> list[str]:
+    proj_root = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.environ.get("EPD_LIB_PATH", ""),
+        os.path.join(proj_root, "e-Paper", "RaspberryPi_Jetson_Nano", "python", "lib"),
+        os.path.expanduser(os.path.join("~", "e-Paper", "RaspberryPi_Jetson_Nano", "python", "lib")),
+    ]
+    return [p for p in candidates if p and os.path.isdir(p)]
+
+
 def main() -> int:
     print("-- System --")
     print(f"Python: {sys.version.split()[0]}")
@@ -54,6 +64,18 @@ def main() -> int:
 
     print("\n-- Python modules --")
     for mod in ["PIL", "spidev", "RPi.GPIO", "waveshare_epd"]:
+        ok, msg = _check_module(mod)
+        status = "OK" if ok else "FAIL"
+        print(f"{mod:12s}: {status:4s} - {msg}")
+
+    # Try flat modules from the official e-Paper repo after adding likely paths
+    added = []
+    for p in _discover_epd_paths():
+        if p not in sys.path:
+            sys.path.insert(0, p)
+            added.append(p)
+
+    for mod in ["epd2in13_V4", "epd2in13_V3", "epd2in13_V2", "epd2in13"]:
         ok, msg = _check_module(mod)
         status = "OK" if ok else "FAIL"
         print(f"{mod:12s}: {status:4s} - {msg}")
@@ -68,10 +90,18 @@ def main() -> int:
         print("If modules are missing on Raspberry Pi OS:")
         print("  1) Enable SPI: sudo raspi-config -> Interface Options -> SPI -> Enable")
         print("  2) Install system packages: sudo apt update && sudo apt install -y python3-pil python3-rpi.gpio python3-spidev")
-        print("  3) Install Waveshare Python lib:")
-        print("     - EITHER: pip install waveshare-epd")
-        print("     - OR: git clone https://github.com/waveshare/e-Paper && export PYTHONPATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib:$PYTHONPATH")
+        print("  3) Install Waveshare e-Paper Python lib (official repo):")
+        print("     git clone https://github.com/waveshare/e-Paper ~/e-Paper")
+        print("     export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib")
+        print("     # Or place the repo inside this project: ./e-Paper and we will auto-detect it.")
+        print("     # Community packages like 'waveshare-epd' may work on some platforms.")
         print("  4) Log out/in or add your user to 'spi' group: sudo usermod -aG spi $USER")
+        if added:
+            print("\nDetected e-Paper lib path(s):")
+            for p in added:
+                print(f"  - {p}")
+        elif os.environ.get("EPD_LIB_PATH"):
+            print(f"\nEPD_LIB_PATH set to: {os.environ.get('EPD_LIB_PATH')}")
     else:
         print("This device does not appear to be a Raspberry Pi. The EPD backend requires a Pi with SPI enabled.")
 

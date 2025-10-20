@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import os
+import sys
 from PIL import Image
 
 
@@ -68,6 +69,24 @@ class WaveshareEPD2in13Backend(DisplayBackend):
         self._load_driver()
 
     def _load_driver(self) -> None:
+        # Attempt to discover and add Waveshare e-Paper python lib to sys.path
+        proj_root = os.path.dirname(os.path.abspath(__file__))
+        candidate_paths = []
+        env_path = os.environ.get("EPD_LIB_PATH")
+        if env_path:
+            candidate_paths.append(env_path)
+        candidate_paths.extend(
+            [
+                os.path.join(proj_root, "e-Paper", "RaspberryPi_Jetson_Nano", "python", "lib"),
+                os.path.expanduser(os.path.join("~", "e-Paper", "RaspberryPi_Jetson_Nano", "python", "lib")),
+            ]
+        )
+        added_paths = []
+        for p in candidate_paths:
+            if p and os.path.isdir(p) and p not in sys.path:
+                sys.path.insert(0, p)
+                added_paths.append(p)
+
         # Try commonly used module/class names
         candidates = []
         if self.variant == "AUTO":
@@ -107,11 +126,18 @@ class WaveshareEPD2in13Backend(DisplayBackend):
             hint = (
                 "Ensure the Waveshare Python library is installed and SPI is enabled.\n"
                 "- pip install RPi.GPIO spidev Pillow\n"
-                "- Clone https://github.com/waveshare/e-Paper and add its python lib to PYTHONPATH,\n"
-                "  or pip install waveshare-epd (community packages may vary).\n"
+                "- Clone https://github.com/waveshare/e-Paper\n"
+                "  Place it at either: ./e-Paper (next to this project) or ~/e-Paper,\n"
+                "  or set EPD_LIB_PATH to its python lib, e.g.:\n"
+                "    export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib\n"
+                "  Then rerun this script.\n"
+                "  Community packages like 'waveshare-epd' may also work on some platforms.\n"
                 "- On Raspberry Pi: sudo raspi-config -> Interface Options -> SPI: Enable\n"
             )
-            raise RuntimeError(f"Failed to load 2.13\" EPD driver (last error: {last_err}).\n{hint}")
+            paths_info = ("\nSearched paths added to sys.path:\n  - " + "\n  - ".join(added_paths)) if added_paths else ""
+            raise RuntimeError(
+                f"Failed to load 2.13\" EPD driver (last error: {last_err}).\n{hint}{paths_info}"
+            )
 
         # Initialize once (support both init and Init)
         init = getattr(self._epd, "init", None) or getattr(self._epd, "Init", None)

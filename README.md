@@ -51,10 +51,12 @@ Manual steps (equivalent to the script):
 - In your venv: `pip install -r requirements.txt`
 
 4) Install Waveshare Python library
-- Option A (packaged): `pip install waveshare-epd` (community package; version may vary)
-- Option B (official repo):
+- Option A (official repo, recommended):
   - `git clone https://github.com/waveshare/e-Paper ~/e-Paper`
-  - `export PYTHONPATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib:$PYTHONPATH`
+  - Set env var so the project can find the library:
+    - `export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib`
+  - Alternatively, clone into the project root as `./e-Paper` and it will be auto-detected.
+- Option B (community package; may vary by platform): `pip install waveshare-epd`
 
 5) Verify environment (recommended)
 - `python check_env.py`
@@ -66,6 +68,8 @@ Manual steps (equivalent to the script):
 
 Troubleshooting:
 - No module named 'waveshare_epd': install the library (step 4) or set PYTHONPATH to Waveshare's repo `python/lib`.
+- No module named 'epd2in13': set EPD_LIB_PATH to the repo's `RaspberryPi_Jetson_Nano/python/lib`,
+  or place the `e-Paper` repo inside the project folder so it’s auto-detected.
 - Permission denied on /dev/spidev*: add your user to the `spi` group: `sudo usermod -aG spi $USER` then log out/in.
 - Orientation flipped or rotated: use `--rotate 90|180|270` or adjust the board variant with `--epd-variant`.
 
