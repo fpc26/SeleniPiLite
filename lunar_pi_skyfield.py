@@ -7,7 +7,6 @@ from zoneinfo import ZoneInfo
 from skyfield.api import load, wgs84
 from skyfield import almanac
 from PIL import Image, ImageDraw, ImageFont
-from display_backend import FileBackend, WaveshareEPD2in13Backend
 
 # Optional: Test with specific date (set to None for current date)
 test_date = None  # e.g., datetime.date(2025, 9, 21)
@@ -135,6 +134,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 	parser.add_argument("--rotate", type=int, default=0, help="Rotate output clockwise in degrees (0/90/180/270)")
 	parser.add_argument("--epd-variant", default="auto", help="Waveshare 2.13 variant: auto, V4, V3, V2, V1")
 	parser.add_argument("--no-sleep", action="store_true", help="Do not put the EPD to sleep after rendering")
+	parser.add_argument(
+		"--epd-lib-path",
+		default=None,
+		help=(
+			"Path to Waveshare e-Paper python lib (RaspberryPi_Jetson_Nano/python/lib). "
+			"If set, this is added to sys.path and EPD_LIB_PATH is exported before loading the backend."
+		),
+	)
 	return parser.parse_args(argv)
 
 
@@ -183,6 +190,16 @@ def main(argv: list[str] | None = None):
 	# Draw moon
 	draw_moon_phase(draw, 190, 80, 30, phase_deg)
 
+	# Optionally set EPD lib path before importing backend module
+	if args.epd_lib_path:
+		os.environ["EPD_LIB_PATH"] = args.epd_lib_path
+		# Prepend to sys.path so display_backend can import immediately
+		if os.path.isdir(args.epd_lib_path) and args.epd_lib_path not in sys.path:
+			sys.path.insert(0, args.epd_lib_path)
+
+	# Import backends only now, after env/path is configured
+	from display_backend import FileBackend, WaveshareEPD2in13Backend
+
 	# Choose backend
 	if args.backend == "file":
 		backend = FileBackend(path=args.output)
@@ -194,7 +211,8 @@ def main(argv: list[str] | None = None):
 			print(f"        {e}")
 			print("\nHints:")
 			print("- Run: python check_env.py")
-			print("- See README: Raspberry Pi setup (SPI enablement, installing waveshare-epd)")
+			print("- If using the Waveshare repo, pass --epd-lib-path /path/to/e-Paper/RaspberryPi_Jetson_Nano/python/lib")
+			print("- See README: Raspberry Pi setup (SPI enablement, Waveshare e-Paper repo)")
 			sys.exit(2)
 
 	# Apply rotation at the backend level; for file backend we can rotate here to keep the saved file matching expectation

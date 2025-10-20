@@ -6,7 +6,7 @@ Run:
 
 This validates:
 - Python version and architecture
-- Presence of required Python modules (Pillow, spidev, RPi.GPIO, waveshare_epd)
+- Presence of required Python modules (Pillow, spidev, RPi.GPIO)
 - SPI device nodes (/dev/spidev*)
 - Basic permissions (read/write) on SPI
 """
@@ -63,7 +63,7 @@ def main() -> int:
     print(f"Platform: {platform.system()} {platform.release()} ({platform.machine()})")
 
     print("\n-- Python modules --")
-    for mod in ["PIL", "spidev", "RPi.GPIO", "waveshare_epd"]:
+    for mod in ["PIL", "spidev", "RPi.GPIO"]:
         ok, msg = _check_module(mod)
         status = "OK" if ok else "FAIL"
         print(f"{mod:12s}: {status:4s} - {msg}")
@@ -93,8 +93,7 @@ def main() -> int:
         print("  3) Install Waveshare e-Paper Python lib (official repo):")
         print("     git clone https://github.com/waveshare/e-Paper ~/e-Paper")
         print("     export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib")
-        print("     # Or place the repo inside this project: ./e-Paper and we will auto-detect it.")
-        print("     # Community packages like 'waveshare-epd' may work on some platforms.")
+        print("     # Or place the repo inside this project as ./e-Paper and it will be auto-detected.")
         print("  4) Log out/in or add your user to 'spi' group: sudo usermod -aG spi $USER")
         if added:
             print("\nDetected e-Paper lib path(s):")
