@@ -34,6 +34,8 @@ Quick bootstrap (recommended on Raspberry Pi):
 
 ```bash
 cd rbpi_eink_2.13
+# Optional: choose a custom venv name (default: lunar)
+# VENV_NAME=myenv bash scripts/setup_pi.sh
 bash scripts/setup_pi.sh
 ```
 
@@ -83,7 +85,7 @@ sudo apt-get install -y python3-dev python3-setuptools
 2) System libraries for Pillow and NumPy
 
 ```bash
-sudo apt-get install -y libjpeg-dev zlib1g-dev libfreetype-dev libopenjp2-7
+sudo apt-get install -y python3-venv libjpeg-dev zlib1g-dev libfreetype-dev libopenjp2-7
 # OpenBLAS is used by NumPy; package name may vary by OS release
 sudo apt-get install -y libopenblas0 || sudo apt-get install -y libopenblas0-pthread
 ```
@@ -91,8 +93,8 @@ sudo apt-get install -y libopenblas0 || sudo apt-get install -y libopenblas0-pth
 3) Create and activate a virtual environment
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv .venv/lunar
+source .venv/lunar/bin/activate
 ```
 
 4) Install core Python packages using piwheels and prefer binary wheels
