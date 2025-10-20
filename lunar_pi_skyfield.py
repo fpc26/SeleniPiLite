@@ -187,14 +187,28 @@ def main(argv: list[str] | None = None):
 	if args.backend == "file":
 		backend = FileBackend(path=args.output)
 	else:
-		backend = WaveshareEPD2in13Backend(variant=args.epd_variant, rotate=args.rotate, sleep_after=not args.no_sleep)
+		try:
+			backend = WaveshareEPD2in13Backend(variant=args.epd_variant, rotate=args.rotate, sleep_after=not args.no_sleep)
+		except Exception as e:
+			print("[ERROR] Failed to initialize Waveshare EPD backend:")
+			print(f"        {e}")
+			print("\nHints:")
+			print("- Run: python check_env.py")
+			print("- See README: Raspberry Pi setup (SPI enablement, installing waveshare-epd)")
+			sys.exit(2)
 
 	# Apply rotation at the backend level; for file backend we can rotate here to keep the saved file matching expectation
 	if args.backend == "file" and args.rotate:
 		rotated = image.rotate(-args.rotate, expand=True)
 		backend.render(rotated)
 	else:
-		backend.render(image)
+		try:
+			backend.render(image)
+		except Exception as e:
+			print("[ERROR] Failed to render to EPD:")
+			print(f"        {e}")
+			print("Try adjusting --rotate or --epd-variant, and ensure SPI and drivers are installed.")
+			sys.exit(3)
 
 	print(f"Lunar info for {chosen_date} @ ({LATITUDE}, {LONGITUDE}) [{TZ_NAME}]: {phase_desc} ({illum_pct}% illum, phase: {phase_deg:.1f}°)")
 	print(f"Moon rise: {rise_str}, set: {set_str}")

@@ -2,3 +2,8 @@ pillow>=10
 skyfield>=1.53
 numpy>=1.26
 sgp4>=2.20
+
+# Raspberry Pi (Waveshare EPD) runtime deps - install on Pi only:
+# waveshare-epd
+# RPi.GPIO
+# spidev

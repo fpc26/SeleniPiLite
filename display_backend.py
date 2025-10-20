@@ -72,14 +72,24 @@ class WaveshareEPD2in13Backend(DisplayBackend):
         candidates = []
         if self.variant == "AUTO":
             candidates = [
+                # Community package layout
                 ("waveshare_epd.epd2in13_V4", "EPD"),
                 ("waveshare_epd.epd2in13_V3", "EPD"),
                 ("waveshare_epd.epd2in13_V2", "EPD"),
                 ("waveshare_epd.epd2in13", "EPD"),
+                # Official repo (PYTHONPATH to python/lib) may expose modules directly
+                ("epd2in13_V4", "EPD"),
+                ("epd2in13_V3", "EPD"),
+                ("epd2in13_V2", "EPD"),
+                ("epd2in13", "EPD"),
             ]
         else:
-            mod = f"waveshare_epd.epd2in13_{self.variant}"
-            candidates = [(mod, "EPD")]
+            # Try both namespaced and flat module paths
+            mod_suffix = f"epd2in13_{self.variant}"
+            candidates = [
+                (f"waveshare_epd.{mod_suffix}", "EPD"),
+                (mod_suffix, "EPD"),
+            ]
 
         last_err: Optional[Exception] = None
         for mod_name, class_name in candidates:
@@ -103,17 +113,30 @@ class WaveshareEPD2in13Backend(DisplayBackend):
             )
             raise RuntimeError(f"Failed to load 2.13\" EPD driver (last error: {last_err}).\n{hint}")
 
-        # Initialize once
-        self._epd.init()
+        # Initialize once (support both init and Init)
+        init = getattr(self._epd, "init", None) or getattr(self._epd, "Init", None)
+        if callable(init):
+            init()
+        else:
+            # Some older drivers auto-init on construction
+            pass
         # Clear to white to avoid ghosting on first use
         try:
             self._epd.Clear(0xFF)
         except Exception:
-            # Some drivers use 'clear' (lowercase) or no-op if not supported
-            try:
-                self._epd.clear()
-            except Exception:
-                pass
+            # Some drivers use 'clear' (lowercase) or 'Clear' without args
+            for name in ("clear", "Clear"):
+                fn = getattr(self._epd, name, None)
+                if callable(fn):
+                    try:
+                        # Try both with and without argument
+                        try:
+                            fn(0xFF)
+                        except TypeError:
+                            fn()
+                        break
+                    except Exception:
+                        continue
 
     def render(self, image: Image.Image) -> None:
         # Determine target dimensions (driver convention: attributes width/height may be swapped orientation-wise)
@@ -140,20 +163,27 @@ class WaveshareEPD2in13Backend(DisplayBackend):
                 img = img.resize((height, width), resample=Image.NEAREST)
 
         # Some drivers expect the buffer in a specific orientation; try both mappings
+        # Resolve display/getbuffer names across versions
+        display = getattr(self._epd, "display", None) or getattr(self._epd, "Display", None)
+        getbuffer = getattr(self._epd, "getbuffer", None) or getattr(self._epd, "getBuffer", None)
+        if not callable(display) or not callable(getbuffer):
+            raise RuntimeError("EPD driver missing display/getbuffer methods; incompatible driver version")
+
         try:
-            self._epd.display(self._epd.getbuffer(img))
+            display(getbuffer(img))
         except Exception:
             # Try rotate 180 deg if orientation is flipped
             try:
-                self._epd.display(self._epd.getbuffer(img.rotate(180)))
-            except Exception as e:
+                display(getbuffer(img.rotate(180)))
+            except Exception:
                 raise
         finally:
             if self.sleep_after:
-                try:
-                    self._epd.sleep()
-                except Exception:
-                    try:
-                        self._epd.Sleep()
-                    except Exception:
-                        pass
+                for name in ("sleep", "Sleep"):
+                    fn = getattr(self._epd, name, None)
+                    if callable(fn):
+                        try:
+                            fn()
+                            break
+                        except Exception:
+                            continue
