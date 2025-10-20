@@ -17,6 +17,7 @@ import os
 import sys
 import platform
 import importlib
+import importlib.util
 from typing import Tuple
 
 
@@ -83,15 +84,21 @@ def main() -> int:
             sys.path.insert(0, p)
             added.append(p)
 
-    # Try both flat and namespaced module imports
+    # Prefer checking availability without importing (to avoid GPIO side effects)
+    print("\n-- Waveshare e-Paper module discovery --")
+    # 1) Can we import the package without side effects?
+    spec_pkg = importlib.util.find_spec("waveshare_epd")
+    print(f"waveshare_epd pkg: {'FOUND' if spec_pkg else 'MISSING'}")
+    # 2) Which 2.13 variants are present (namespaced)?
     for mod in [
-        "epd2in13_V4", "epd2in13_V3", "epd2in13_V2", "epd2in13",
         "waveshare_epd.epd2in13_V4", "waveshare_epd.epd2in13_V3",
         "waveshare_epd.epd2in13_V2", "waveshare_epd.epd2in13",
+        "waveshare_epd.epd2in13b_V3", "waveshare_epd.epd2in13b_V4",
+        "waveshare_epd.epd2in13d", "waveshare_epd.epd2in13g",
     ]:
-        ok, msg = _check_module(mod)
-        status = "OK" if ok else "FAIL"
-        print(f"{mod:12s}: {status:4s} - {msg}")
+        spec = importlib.util.find_spec(mod)
+        status = "FOUND" if spec else "MISSING"
+        print(f"{mod:24s}: {status}")
 
     print("\n-- SPI devices --")
     ok, msg = _check_spi_nodes()

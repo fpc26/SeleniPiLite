@@ -81,23 +81,17 @@ echo "[6/7] Installing project requirements and Raspberry Pi deps"
   --extra-index-url https://www.piwheels.org/simple \
   RPi.GPIO spidev gpiozero
 
-echo "Installing Waveshare EPD driver (pip)"
-if ! "$VENV_PIP" install --prefer-binary --only-binary=:all: \
-    --extra-index-url https://www.piwheels.org/simple \
-    waveshare-epd; then
-  echo "[WARN] pip install waveshare-epd failed or not available for your platform."
-  echo "       You can use the official repo instead:"
-  echo "         git clone https://github.com/waveshare/e-Paper ~/e-Paper"
-  echo "         export PYTHONPATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib:\$PYTHONPATH"
-fi
+echo "Skipping Waveshare EPD pip install (no official package). Use the official repo instead:"
+echo "  git clone https://github.com/waveshare/e-Paper ~/e-Paper"
+echo "  export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib  # or RaspberryPi_JetsonNano"
 
 echo "[7/7] Running environment check"
 "$VENV_PY" "$REPO_DIR/check_env.py" || true
 
 echo
 echo "Done. If SPI is not yet enabled, run: sudo raspi-config -> Interface Options -> SPI -> Enable"
-echo "If you just installed SPI, add your user to the spi group and log out/in:"
-echo "  sudo usermod -aG spi $USER"
+echo "If you just enabled SPI/GPIO, add your user to the spi and gpio groups and log out/in:"
+echo "  sudo usermod -aG spi,gpio $USER"
 echo
 echo "Try running:"
 echo "  source $VENV_DIR/bin/activate"

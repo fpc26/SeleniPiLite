@@ -97,16 +97,25 @@ class WaveshareEPD2in13Backend(DisplayBackend):
         candidates = []
         if self.variant == "AUTO":
             candidates = [
-                # Community package layout
+                # Prefer namespaced imports (package context for relative imports)
                 ("waveshare_epd.epd2in13_V4", "EPD"),
                 ("waveshare_epd.epd2in13_V3", "EPD"),
                 ("waveshare_epd.epd2in13_V2", "EPD"),
                 ("waveshare_epd.epd2in13", "EPD"),
-                # Official repo (PYTHONPATH to python/lib) may expose modules directly
+                # Alternate 2.13 variants seen in repos
+                ("waveshare_epd.epd2in13b_V4", "EPD"),
+                ("waveshare_epd.epd2in13b_V3", "EPD"),
+                ("waveshare_epd.epd2in13d", "EPD"),
+                ("waveshare_epd.epd2in13g", "EPD"),
+                # Flat modules (fallback)
                 ("epd2in13_V4", "EPD"),
                 ("epd2in13_V3", "EPD"),
                 ("epd2in13_V2", "EPD"),
                 ("epd2in13", "EPD"),
+                ("epd2in13b_V4", "EPD"),
+                ("epd2in13b_V3", "EPD"),
+                ("epd2in13d", "EPD"),
+                ("epd2in13g", "EPD"),
             ]
         else:
             # Try both namespaced and flat module paths
