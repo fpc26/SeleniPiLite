@@ -130,8 +130,17 @@ class WaveshareEPD2in13Backend(DisplayBackend):
             try:
                 module = __import__(mod_name, fromlist=[class_name])
                 epd_cls = getattr(module, class_name)
+                try:
+                    # Attempt to instantiate the driver; if this fails due to GPIO/SPI permissions,
+                    # surface that error immediately (it's the correct module).
+                    epd = epd_cls()
+                except Exception as e:
+                    # If instantiation fails (e.g., RuntimeError: Failed to add edge detection),
+                    # stop trying other variants and raise with helpful hints.
+                    last_err = e
+                    break
                 self._module = module
-                self._epd = epd_cls()
+                self._epd = epd
                 break
             except Exception as e:  # ImportError or attribute errors
                 last_err = e
@@ -149,6 +158,10 @@ class WaveshareEPD2in13Backend(DisplayBackend):
                 "  Then rerun this script.\n"
                 "  Community packages like 'waveshare-epd' may also work on some platforms.\n"
                 "- On Raspberry Pi: sudo raspi-config -> Interface Options -> SPI: Enable\n"
+                "- GPIO permissions: add your user to 'spi' and 'gpio' groups and log out/in:\n"
+                "    sudo usermod -aG spi,gpio $USER\n"
+                "  To quickly test permissions, try running as root (not recommended long-term):\n"
+                "    sudo -E python your_script.py --backend epd ...\n"
             )
             paths_info = ("\nSearched paths added to sys.path:\n  - " + "\n  - ".join(added_paths)) if added_paths else ""
             raise RuntimeError(

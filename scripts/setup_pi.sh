@@ -21,6 +21,9 @@ sudo apt-get update -y
 sudo apt-get install -y \
   python3-dev python3-setuptools python3-venv \
   libjpeg-dev zlib1g-dev libfreetype-dev libopenjp2-7 || true
+# GPIO helpers and pigpio daemon (more reliable edge detection than RPi.GPIO on some setups)
+sudo apt-get install -y pigpio python3-pigpio || true
+sudo systemctl enable --now pigpiod || true
 # OpenBLAS (name varies by distro release)
 if ! sudo apt-get install -y libopenblas0; then
   sudo apt-get install -y libopenblas0-pthread || true
@@ -79,7 +82,7 @@ echo "[6/7] Installing project requirements and Raspberry Pi deps"
 # GPIO/SPI modules via pip so they are available inside venv
 "$VENV_PIP" install --prefer-binary --only-binary=:all: \
   --extra-index-url https://www.piwheels.org/simple \
-  RPi.GPIO spidev gpiozero
+  RPi.GPIO spidev gpiozero pigpio
 
 echo "Skipping Waveshare EPD pip install (no official package). Use the official repo instead:"
 echo "  git clone https://github.com/waveshare/e-Paper ~/e-Paper"
@@ -92,6 +95,9 @@ echo
 echo "Done. If SPI is not yet enabled, run: sudo raspi-config -> Interface Options -> SPI -> Enable"
 echo "If you just enabled SPI/GPIO, add your user to the spi and gpio groups and log out/in:"
 echo "  sudo usermod -aG spi,gpio $USER"
+echo "If you see gpiozero pin factory errors, try using pigpio backend:"
+echo "  sudo systemctl enable --now pigpiod"
+echo "  export GPIOZERO_PIN_FACTORY=pigpio"
 echo
 echo "Try running:"
 echo "  source $VENV_DIR/bin/activate"
