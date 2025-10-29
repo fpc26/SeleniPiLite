@@ -47,19 +47,21 @@ class FileBackend(DisplayBackend):
         img.save(self.path)
 
 
-class WaveshareEPD2in13Backend(DisplayBackend):
-    """Render to a Waveshare 2.13" e-ink display.
+class WaveshareEPDBackend(DisplayBackend):
+    """Generic backend for Waveshare e-Paper HATs (multiple sizes/models).
 
-    Attempts to import supported variants and detect width/height. Converts the
-    provided image to 1-bit and rotates if requested.
+    Attempts to import the appropriate driver from the official repos and detect
+    width/height. Converts the provided image to 1-bit and rotates if requested.
 
     Parameters
-    - variant: "auto", "V4", "V3", "V2", or "V1" (best effort)
+    - model: e.g., "2in13" (default), "7in5", "7in5b" (tri-color), etc.
+    - variant: "auto", "V4", "V3", "V2", "V1" (best effort; depends on model)
     - rotate: 0, 90, 180, 270 (clockwise degrees)
     - sleep_after: put the display to sleep after rendering
     """
 
-    def __init__(self, variant: str = "auto", rotate: int = 0, sleep_after: bool = True):
+    def __init__(self, model: str = "2in13", variant: str = "auto", rotate: int = 0, sleep_after: bool = True):
+        self.model = (model or "2in13").lower()
         self.variant = (variant or "auto").upper()
         self.rotate = rotate % 360
         self.sleep_after = sleep_after
@@ -80,12 +82,14 @@ class WaveshareEPD2in13Backend(DisplayBackend):
                 base_path = os.path.dirname(base_path)
             candidate_paths.append(base_path)
 
-        # Consider both folder name variants used by the repo
+        # Consider both folder name variants used by the repos (e-Paper and Touch_e-Paper_HAT)
         repo_variants = ["RaspberryPi_Jetson_Nano", "RaspberryPi_JetsonNano"]
         for base in [proj_root, os.path.expanduser("~")]:
             for variant in repo_variants:
-                lib_path = os.path.join(base, "e-Paper", variant, "python", "lib")
-                candidate_paths.append(lib_path)
+                # Official e-Paper repo
+                candidate_paths.append(os.path.join(base, "e-Paper", variant, "python", "lib"))
+                # Touch e-Paper HAT repo
+                candidate_paths.append(os.path.join(base, "Touch_e-Paper_HAT", variant, "python", "lib"))
 
         added_paths: list[str] = []
         for p in candidate_paths:
@@ -95,35 +99,35 @@ class WaveshareEPD2in13Backend(DisplayBackend):
 
         # Try commonly used module/class names
         candidates = []
-        if self.variant == "AUTO":
-            candidates = [
-                # Prefer namespaced imports (package context for relative imports)
-                ("waveshare_epd.epd2in13_V4", "EPD"),
-                ("waveshare_epd.epd2in13_V3", "EPD"),
-                ("waveshare_epd.epd2in13_V2", "EPD"),
-                ("waveshare_epd.epd2in13", "EPD"),
-                # Alternate 2.13 variants seen in repos
-                ("waveshare_epd.epd2in13b_V4", "EPD"),
-                ("waveshare_epd.epd2in13b_V3", "EPD"),
-                ("waveshare_epd.epd2in13d", "EPD"),
-                ("waveshare_epd.epd2in13g", "EPD"),
-                # Flat modules (fallback)
-                ("epd2in13_V4", "EPD"),
-                ("epd2in13_V3", "EPD"),
-                ("epd2in13_V2", "EPD"),
-                ("epd2in13", "EPD"),
-                ("epd2in13b_V4", "EPD"),
-                ("epd2in13b_V3", "EPD"),
-                ("epd2in13d", "EPD"),
-                ("epd2in13g", "EPD"),
-            ]
-        else:
-            # Try both namespaced and flat module paths
-            mod_suffix = f"epd2in13_{self.variant}"
-            candidates = [
-                (f"waveshare_epd.{mod_suffix}", "EPD"),
-                (mod_suffix, "EPD"),
-            ]
+        def _model_module_candidates(model: str) -> list[tuple[str, str]]:
+            m = model.lower()
+            names: list[tuple[str, str]] = []
+            if self.variant == "AUTO":
+                # Try common variants first
+                base_names = [f"epd{m}_V4", f"epd{m}_V3", f"epd{m}_V2", f"epd{m}"]
+                # Include some typical tri-color suffixes for both 2.13 and 7.5 families
+                tri = [f"epd{m}b_V4", f"epd{m}b_V3", f"epd{m}b_V2", f"epd{m}b"]
+                # Extra alternates seen for 2.13
+                extra = []
+                if m == "2in13":
+                    extra = ["epd2in13d", "epd2in13g"]
+                all_mods = base_names + tri + extra
+                for mod in all_mods:
+                    names.append((f"waveshare_epd.{mod}", "EPD"))
+                for mod in all_mods:
+                    names.append((mod, "EPD"))
+            else:
+                mod_suffix = f"epd{m}_{self.variant}"
+                names.append((f"waveshare_epd.{mod_suffix}", "EPD"))
+                names.append((mod_suffix, "EPD"))
+                # Also try non-suffixed for convenience (some repos don't use variant suffix)
+                names.append((f"waveshare_epd.epd{m}", "EPD"))
+                names.append((f"epd{m}", "EPD"))
+            return names
+
+        # Build candidates for the requested model, but if AUTO variant fails entirely
+        # and the model looks like 2in13 touch panel, suggest Touch repo in error.
+        candidates = _model_module_candidates(self.model)
 
         last_err: Optional[Exception] = None
         for mod_name, class_name in candidates:
@@ -150,11 +154,13 @@ class WaveshareEPD2in13Backend(DisplayBackend):
             hint = (
                 "Ensure the Waveshare Python library is installed and SPI is enabled.\n"
                 "- pip install RPi.GPIO spidev Pillow\n"
-                "- Clone https://github.com/waveshare/e-Paper\n"
-                "  Place it at either: ./e-Paper (next to this project) or ~/e-Paper,\n"
-                "  or set EPD_LIB_PATH to its python lib, e.g.:\n"
+                "- Clone official repos (pick the one matching your HAT):\n"
+                "    https://github.com/waveshare/e-Paper\n"
+                "    https://github.com/waveshare/Touch_e-Paper_HAT  (for touch versions like 2.13 Touch)\n"
+                "  Place at: ./e-Paper or ~/e-Paper (and/or ./Touch_e-Paper_HAT or ~/Touch_e-Paper_HAT),\n"
+                "  or set EPD_LIB_PATH to the python lib folder, e.g.:\n"
                 "    export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib\n"
-                "    or EPD_LIB_PATH=~/e-Paper/RaspberryPi_JetsonNano/python/lib\n"
+                "    export EPD_LIB_PATH=~/Touch_e-Paper_HAT/RaspberryPi_Jetson_Nano/python/lib\n"
                 "  Then rerun this script.\n"
                 "  Community packages like 'waveshare-epd' may also work on some platforms.\n"
                 "- On Raspberry Pi: sudo raspi-config -> Interface Options -> SPI: Enable\n"
@@ -165,7 +171,7 @@ class WaveshareEPD2in13Backend(DisplayBackend):
             )
             paths_info = ("\nSearched paths added to sys.path:\n  - " + "\n  - ".join(added_paths)) if added_paths else ""
             raise RuntimeError(
-                f"Failed to load 2.13\" EPD driver (last error: {last_err}).\n{hint}{paths_info}"
+                f"Failed to load EPD driver for model '{self.model}' (last error: {last_err}).\n{hint}{paths_info}"
             )
 
         # Initialize once (support both init and Init)
@@ -198,8 +204,11 @@ class WaveshareEPD2in13Backend(DisplayBackend):
         width = getattr(self._epd, "width", None)
         height = getattr(self._epd, "height", None)
         if width is None or height is None:
-            # Fallback to common 2.13" V4 resolution
-            width, height = 122, 250
+            # Fallbacks by model
+            if self.model == "7in5" or self.model == "7in5b":
+                width, height = 480, 800  # typical 7.5" resolution (WxH)
+            else:
+                width, height = 122, 250  # 2.13" default
 
         # The script renders a 250x122 landscape image. Map to EPD orientation.
         img = image.convert("1")
@@ -242,3 +251,13 @@ class WaveshareEPD2in13Backend(DisplayBackend):
                             break
                         except Exception:
                             continue
+
+
+class WaveshareEPD2in13Backend(WaveshareEPDBackend):
+    """Backward-compatible alias for 2.13" displays.
+
+    Kept for existing callers; equivalent to WaveshareEPDBackend(model="2in13", ...).
+    """
+
+    def __init__(self, variant: str = "auto", rotate: int = 0, sleep_after: bool = True):
+        super().__init__(model="2in13", variant=variant, rotate=rotate, sleep_after=sleep_after)

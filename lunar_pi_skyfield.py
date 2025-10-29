@@ -129,10 +129,11 @@ def draw_moon_phase(draw: ImageDraw.ImageDraw, center_x: int, center_y: int, rad
 def parse_args(argv: list[str]) -> argparse.Namespace:
 	parser = argparse.ArgumentParser(description="Lunar info renderer with pluggable display backend")
 	parser.add_argument("--date", help="ISO date (YYYY-MM-DD) to render; default today", default=None)
-	parser.add_argument("--backend", choices=["file", "epd"], default="file", help="Output backend: file (PNG) or epd (Waveshare 2.13\")")
+	parser.add_argument("--backend", choices=["file", "epd"], default="file", help="Output backend: file (PNG) or epd (Waveshare e-Paper)")
 	parser.add_argument("--output", "-o", default="lunar_output.png", help="Output PNG path when using file backend")
 	parser.add_argument("--rotate", type=int, default=0, help="Rotate output clockwise in degrees (0/90/180/270)")
-	parser.add_argument("--epd-variant", default="auto", help="Waveshare 2.13 variant: auto, V4, V3, V2, V1")
+	parser.add_argument("--epd-model", default="2in13", help="Waveshare model, e.g., 2in13 (default), 7in5, 7in5b")
+	parser.add_argument("--epd-variant", default="auto", help="Waveshare variant (model-specific): auto, V4, V3, V2, V1")
 	parser.add_argument("--no-sleep", action="store_true", help="Do not put the EPD to sleep after rendering")
 	parser.add_argument(
 		"--epd-lib-path",
@@ -198,14 +199,14 @@ def main(argv: list[str] | None = None):
 			sys.path.insert(0, args.epd_lib_path)
 
 	# Import backends only now, after env/path is configured
-	from display_backend import FileBackend, WaveshareEPD2in13Backend
+	from display_backend import FileBackend, WaveshareEPDBackend
 
 	# Choose backend
 	if args.backend == "file":
 		backend = FileBackend(path=args.output)
 	else:
 		try:
-			backend = WaveshareEPD2in13Backend(variant=args.epd_variant, rotate=args.rotate, sleep_after=not args.no_sleep)
+			backend = WaveshareEPDBackend(model=args.epd_model, variant=args.epd_variant, rotate=args.rotate, sleep_after=not args.no_sleep)
 		except Exception as e:
 			print("[ERROR] Failed to initialize Waveshare EPD backend:")
 			print(f"        {e}")
@@ -233,7 +234,7 @@ def main(argv: list[str] | None = None):
 	if args.backend == "file":
 		print(f"Output saved as {args.output}")
 	else:
-		print("Output sent to Waveshare 2.13\" e-ink display")
+		print("Output sent to Waveshare e-Paper display")
 
 
 if __name__ == "__main__":

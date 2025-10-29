@@ -60,9 +60,14 @@ def _discover_epd_paths() -> list[str]:
             candidates.append(os.path.dirname(env_path))
     for base in [proj_root, os.path.expanduser(os.path.join("~"))]:
         for v in variants:
+            # Official e-Paper repo
             lib = os.path.join(base, "e-Paper", v, "python", "lib")
             candidates.append(lib)
             candidates.append(os.path.join(lib, "waveshare_epd"))
+            # Touch e-Paper HAT repo
+            lib_t = os.path.join(base, "Touch_e-Paper_HAT", v, "python", "lib")
+            candidates.append(lib_t)
+            candidates.append(os.path.join(lib_t, "waveshare_epd"))
     return [p for p in candidates if p and os.path.isdir(p)]
 
 
@@ -89,12 +94,16 @@ def main() -> int:
     # 1) Can we import the package without side effects?
     spec_pkg = importlib.util.find_spec("waveshare_epd")
     print(f"waveshare_epd pkg: {'FOUND' if spec_pkg else 'MISSING'}")
-    # 2) Which 2.13 variants are present (namespaced)?
+    # 2) Which common modules are present (namespaced)?
     for mod in [
+        # 2.13 family
         "waveshare_epd.epd2in13_V4", "waveshare_epd.epd2in13_V3",
         "waveshare_epd.epd2in13_V2", "waveshare_epd.epd2in13",
         "waveshare_epd.epd2in13b_V3", "waveshare_epd.epd2in13b_V4",
         "waveshare_epd.epd2in13d", "waveshare_epd.epd2in13g",
+        # 7.5 family
+        "waveshare_epd.epd7in5_V3", "waveshare_epd.epd7in5_V2", "waveshare_epd.epd7in5",
+        "waveshare_epd.epd7in5b_V2", "waveshare_epd.epd7in5b",
     ]:
         spec = importlib.util.find_spec(mod)
         status = "FOUND" if spec else "MISSING"
