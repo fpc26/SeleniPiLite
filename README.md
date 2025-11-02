@@ -50,13 +50,19 @@ Manual steps (equivalent to the script):
 3) Install Python deps
 - In your venv: `pip install -r requirements.txt`
 
-4) Install Waveshare Python library
-- Option A (official repo, recommended):
+4) Install Waveshare Python library (choose one path)
+- Touch-enabled HATs (GT1151 controller):
+  - `git clone https://github.com/waveshare/Touch_e-Paper_HAT ~/Touch_e-Paper_HAT`
+  - Export either of these so drivers can be found:
+    - `export EPD_LIB_PATH=~/Touch_e-Paper_HAT/python/lib`
+    - `export PYTHONPATH=~/Touch_e-Paper_HAT/python/lib:~/Touch_e-Paper_HAT/python/lib/TP_lib:$PYTHONPATH`
+  - Keep both SPI and I2C enabled and confirm `i2cdetect -y 1` shows the touch controller (0x5d).
+- Non-touch HATs:
   - `git clone https://github.com/waveshare/e-Paper ~/e-Paper`
-  - Set env var so the project can find the library:
+  - Export the driver path:
     - `export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib`
-  - Alternatively, clone into the project root as `./e-Paper` and it will be auto-detected.
-- Option B (community package; may vary by platform): `pip install waveshare-epd`
+  - Cloning into the project root as `./e-Paper` or `./Touch_e-Paper_HAT` also works; `_load_driver` scans both.
+- Community package (fallback, support varies by platform): `pip install waveshare-epd`
 
 5) Verify environment (recommended)
 - `python check_env.py`
@@ -121,13 +127,17 @@ sudo apt-get install -y python3-rpi.gpio python3-spidev
 6) Waveshare driver (choose one)
 
 ```bash
-# Packaged (community):
-pip install waveshare-epd
-
-# OR official repo:
+# Touch-enabled HATs
+git clone https://github.com/waveshare/Touch_e-Paper_HAT ~/Touch_e-Paper_HAT
+export PYTHONPATH=~/Touch_e-Paper_HAT/python/lib:~/Touch_e-Paper_HAT/python/lib/TP_lib:$PYTHONPATH
+# Non-touch HATs
 git clone https://github.com/waveshare/e-Paper ~/e-Paper
 export PYTHONPATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib:$PYTHONPATH
+# Community package (fallback)
+pip install waveshare-epd
 ```
+
+If you use the touch HAT, ensure I2C remains enabled (`sudo raspi-config` → Interface Options → I2C) and that the GT1151 device shows up on `/dev/i2c-1`.
 
 7) Verify environment and run
 

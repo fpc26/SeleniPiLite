@@ -84,7 +84,12 @@ echo "[6/7] Installing project requirements and Raspberry Pi deps"
   --extra-index-url https://www.piwheels.org/simple \
   RPi.GPIO spidev gpiozero pigpio
 
-echo "Skipping Waveshare EPD pip install (no official package). Use the official repo instead:"
+echo "Skipping Waveshare EPD pip install (no official package). Clone the matching vendor repo:"
+echo "  # Touch-enabled HATs"
+echo "  git clone https://github.com/waveshare/Touch_e-Paper_HAT ~/Touch_e-Paper_HAT"
+echo "  export PYTHONPATH=~/Touch_e-Paper_HAT/python/lib:~/Touch_e-Paper_HAT/python/lib/TP_lib:\$PYTHONPATH"
+echo ""
+echo "  # Non-touch HATs"
 echo "  git clone https://github.com/waveshare/e-Paper ~/e-Paper"
 echo "  export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib  # or RaspberryPi_JetsonNano"
 
@@ -93,8 +98,9 @@ echo "[7/7] Running environment check"
 
 echo
 echo "Done. If SPI is not yet enabled, run: sudo raspi-config -> Interface Options -> SPI -> Enable"
-echo "If you just enabled SPI/GPIO, add your user to the spi and gpio groups and log out/in:"
-echo "  sudo usermod -aG spi,gpio $USER"
+echo "If you have a touch-enabled HAT, enable I2C as well: sudo raspi-config -> Interface Options -> I2C -> Enable"
+echo "If you just enabled SPI/GPIO/I2C, add your user to the spi,gpio,i2c groups and log out/in:"
+echo "  sudo usermod -aG spi,gpio,i2c $USER"
 echo "If you see gpiozero pin factory errors, try using pigpio backend:"
 echo "  sudo systemctl enable --now pigpiod"
 echo "  export GPIOZERO_PIN_FACTORY=pigpio"
