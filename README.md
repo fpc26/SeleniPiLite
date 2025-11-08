@@ -1,4 +1,4 @@
-# rbpi_eink_2.13
+# SeleniPi_Lite
 RBPi Lunar Tracker - RBPi Z & E-ink display
 
 ## Quick start
