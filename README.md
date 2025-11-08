@@ -34,7 +34,7 @@ Options:
 Quick bootstrap (recommended on Raspberry Pi):
 
 ```bash
-cd rbpi_eink_2.13
+cd SeleniPi_Lite
 # Optional: choose a custom venv name (default: lunar)
 # VENV_NAME=myenv bash scripts/setup_pi.sh
 # The script will recreate the venv if it is missing an activate script.
@@ -158,5 +158,5 @@ pip config set global.prefer-binary true
 pip config set global.only-binary :all:
 ```
 
-# rbpi_eink_2.13
+# SeleniPi_Lite
 RBPi Lunar Tracker - RBPi Z &amp; E-ink display
