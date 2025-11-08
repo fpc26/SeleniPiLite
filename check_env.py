@@ -54,20 +54,26 @@ def _discover_epd_paths() -> list[str]:
     candidates: list[str] = []
     env_path = os.environ.get("EPD_LIB_PATH", "")
     if env_path:
+        env_path = env_path.rstrip(os.sep)
         candidates.append(env_path)
         candidates.append(os.path.join(env_path, "waveshare_epd"))
-        if env_path.endswith("waveshare_epd"):
+        candidates.append(os.path.join(env_path, "TP_lib"))
+        if env_path.endswith("waveshare_epd") or env_path.endswith("TP_lib"):
             candidates.append(os.path.dirname(env_path))
+    touch_repo_names = ["Touch_e-Paper_HAT", "Touch-e-Paper_HAT"]
     for base in [proj_root, os.path.expanduser(os.path.join("~"))]:
         for v in variants:
             # Official e-Paper repo
             lib = os.path.join(base, "e-Paper", v, "python", "lib")
             candidates.append(lib)
             candidates.append(os.path.join(lib, "waveshare_epd"))
+            candidates.append(os.path.join(lib, "TP_lib"))
             # Touch e-Paper HAT repo
-            lib_t = os.path.join(base, "Touch_e-Paper_HAT", v, "python", "lib")
-            candidates.append(lib_t)
-            candidates.append(os.path.join(lib_t, "waveshare_epd"))
+            for touch_repo in touch_repo_names:
+                lib_t = os.path.join(base, touch_repo, v, "python", "lib")
+                candidates.append(lib_t)
+                candidates.append(os.path.join(lib_t, "waveshare_epd"))
+                candidates.append(os.path.join(lib_t, "TP_lib"))
     return [p for p in candidates if p and os.path.isdir(p)]
 
 
@@ -107,7 +113,10 @@ def main() -> int:
         "waveshare_epd.epd7in5_V3", "waveshare_epd.epd7in5_V2", "waveshare_epd.epd7in5",
         "waveshare_epd.epd7in5b_V2", "waveshare_epd.epd7in5b",
     ]:
-        spec = importlib.util.find_spec(mod)
+        try:
+            spec = importlib.util.find_spec(mod)
+        except ModuleNotFoundError:
+            spec = None
         status = "FOUND" if spec else "MISSING"
         print(f"{mod:24s}: {status}")
 

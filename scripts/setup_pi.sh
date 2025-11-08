@@ -97,6 +97,7 @@ echo "Skipping Waveshare EPD pip install (no official package). Clone the matchi
 echo "  # Touch-enabled HATs"
 echo "  git clone https://github.com/waveshare/Touch_e-Paper_HAT ~/Touch_e-Paper_HAT"
 echo "  export PYTHONPATH=~/Touch_e-Paper_HAT/python/lib:~/Touch_e-Paper_HAT/python/lib/TP_lib:\$PYTHONPATH"
+echo "  # (Some distributions name the folder Touch-e-Paper_HAT; both are supported.)"
 echo ""
 echo "  # Non-touch HATs"
 echo "  git clone https://github.com/waveshare/e-Paper ~/e-Paper"

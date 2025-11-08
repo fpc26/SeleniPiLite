@@ -73,6 +73,30 @@ class WaveshareEPDBackend(DisplayBackend):
     def _load_driver(self) -> None:
         # Attempt to discover and add Waveshare e-Paper python lib to sys.path
         proj_root = os.path.dirname(os.path.abspath(__file__))
+
+        def _path_variants(base_path: str) -> list[str]:
+            """Return plausible sys.path entries for Waveshare libraries, including touch TP_lib."""
+            paths: set[str] = set()
+            path = base_path.rstrip(os.sep)
+            if not path:
+                return []
+            paths.add(path)
+            basename = os.path.basename(path)
+            parent = os.path.dirname(path)
+            if basename in {"waveshare_epd", "TP_lib"}:
+                paths.add(parent)
+            if basename != "waveshare_epd":
+                paths.add(os.path.join(path, "waveshare_epd"))
+            if basename != "TP_lib":
+                paths.add(os.path.join(path, "TP_lib"))
+            # Include sibling TP_lib when starting from waveshare_epd directory
+            if basename == "waveshare_epd":
+                paths.add(os.path.join(parent, "TP_lib"))
+            # Include sibling waveshare_epd when starting from TP_lib directory
+            if basename == "TP_lib":
+                paths.add(os.path.join(parent, "waveshare_epd"))
+            return [p for p in paths if p]
+
         candidate_paths: list[str] = []
         env_path = os.environ.get("EPD_LIB_PATH")
         if env_path:
@@ -80,16 +104,20 @@ class WaveshareEPDBackend(DisplayBackend):
             base_path = env_path.rstrip(os.sep)
             if os.path.basename(base_path) == "waveshare_epd":
                 base_path = os.path.dirname(base_path)
-            candidate_paths.append(base_path)
+            candidate_paths.extend(_path_variants(base_path))
 
         # Consider both folder name variants used by the repos (e-Paper and Touch_e-Paper_HAT)
         repo_variants = ["RaspberryPi_Jetson_Nano", "RaspberryPi_JetsonNano"]
+        touch_repo_names = ["Touch_e-Paper_HAT", "Touch-e-Paper_HAT"]
         for base in [proj_root, os.path.expanduser("~")]:
             for variant in repo_variants:
                 # Official e-Paper repo
-                candidate_paths.append(os.path.join(base, "e-Paper", variant, "python", "lib"))
+                lib_path = os.path.join(base, "e-Paper", variant, "python", "lib")
+                candidate_paths.extend(_path_variants(lib_path))
                 # Touch e-Paper HAT repo
-                candidate_paths.append(os.path.join(base, "Touch_e-Paper_HAT", variant, "python", "lib"))
+                for touch_repo in touch_repo_names:
+                    touch_lib = os.path.join(base, touch_repo, variant, "python", "lib")
+                    candidate_paths.extend(_path_variants(touch_lib))
 
         added_paths: list[str] = []
         for p in candidate_paths:
@@ -274,14 +302,52 @@ class WaveshareEPDBackend(DisplayBackend):
                 raise
         finally:
             if self.sleep_after:
-                for name in ("sleep", "Sleep"):
-                    fn = getattr(self._epd, name, None)
-                    if callable(fn):
-                        try:
-                            fn()
-                            break
-                        except Exception:
-                            continue
+                self.sleep()
+
+    def clear(self, color: int = 0xFF) -> None:
+        """Clear the display to the specified color (default: white)."""
+        if self._epd is None:
+            raise RuntimeError("EPD driver not initialized")
+
+        last_err: Optional[Exception] = None
+        for name in ("Clear", "clear"):
+            fn = getattr(self._epd, name, None)
+            if callable(fn):
+                try:
+                    try:
+                        fn(color)
+                    except TypeError:
+                        fn()
+                    return
+                except Exception as err:
+                    last_err = err
+
+        # Fallback: draw a blank image via display/getbuffer
+        width = getattr(self._epd, "width", None)
+        height = getattr(self._epd, "height", None)
+        display = getattr(self._epd, "display", None) or getattr(self._epd, "Display", None)
+        getbuffer = getattr(self._epd, "getbuffer", None) or getattr(self._epd, "getBuffer", None)
+        if width and height and callable(display) and callable(getbuffer):
+            blank = Image.new("1", (width, height), 255 if color else 0)
+            display(getbuffer(blank))
+            return
+
+        if last_err:
+            raise last_err
+        raise RuntimeError("EPD driver does not expose a clear() implementation")
+
+    def sleep(self) -> None:
+        """Put the panel into low-power sleep mode if supported."""
+        if self._epd is None:
+            return
+        for name in ("sleep", "Sleep"):
+            fn = getattr(self._epd, name, None)
+            if callable(fn):
+                try:
+                    fn()
+                except Exception:
+                    pass
+                break
 
 
 class WaveshareEPD2in13Backend(WaveshareEPDBackend):

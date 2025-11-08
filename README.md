@@ -28,6 +28,7 @@ Options:
 - `--rotate 0|90|180|270` rotate output clockwise
 - `--no-sleep` keep the EPD awake (useful when chaining updates)
 - `--epd-variant` accepts `auto`, `V4|V3|V2|V1` (non-touch) or `TP_V4|TP_V3|TP_V2` for touch HATs
+- `--epd-clear` clears the Waveshare display to white and exits (touch/non-touch)
 
 ## Raspberry Pi setup (Waveshare 2.13)
 
@@ -59,6 +60,7 @@ Manual steps (equivalent to the script):
     - `export PYTHONPATH=~/Touch_e-Paper_HAT/python/lib:~/Touch_e-Paper_HAT/python/lib/TP_lib:$PYTHONPATH`
   - Keep both SPI and I2C enabled and confirm `i2cdetect -y 1` shows the touch controller (0x5d).
   - Use `--epd-variant TP_V4` (or TP_V3/TP_V2) when running this project.
+  - The repo folder may appear as `Touch-e-Paper_HAT` (hyphen); both names are auto-detected.
 - Non-touch HATs:
   - `git clone https://github.com/waveshare/e-Paper ~/e-Paper`
   - Export the driver path:
@@ -82,6 +84,47 @@ Troubleshooting:
 - Orientation flipped or rotated: use `--rotate 90|180|270` or adjust the board variant with `--epd-variant`.
 
 Tip: Skyfield will download `de421.bsp` on first run and cache it. To pre-seed on a headless Pi, copy the file next to `lunar_pi_skyfield.py`, or set `SKYFIELD_EPH=/path/to/de421.bsp`.
+
+## Updating this project on Raspberry Pi
+
+Typical workflow once you have cloned the repo on your Pi:
+
+1. **Stop any scripts** that are currently using the display.
+2. Change into the project directory and pull the latest code:
+
+  ```bash
+  cd ~/Documents/rbpi_eink_2.13
+  git pull origin main
+  ```
+
+  If you have local changes, stash or commit them before pulling: `git stash push`.
+
+3. **Refresh the virtual environment** in case dependencies changed:
+
+  ```bash
+  bash scripts/setup_pi.sh
+  ```
+
+  The script is idempotent; it recreates the venv if needed and re-runs `pip install -r requirements.txt`.
+
+4. **Export Waveshare paths** again if you rely on environment variables (e.g. add to `~/.bashrc`):
+
+  ```bash
+  export PYTHONPATH=~/Touch_e-Paper_HAT/python/lib:~/Touch_e-Paper_HAT/python/lib/TP_lib:$PYTHONPATH
+  export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib
+  ```
+
+5. **Verify things still work**:
+
+  ```bash
+  source .venv/lunar/bin/activate
+  python check_env.py
+  python lunar_pi_skyfield.py --backend epd --epd-variant TP_V4 --rotate 0
+  ```
+
+6. If the output looks wrong, review recent changes in the repo to adjust configuration or arguments (`git log --oneline --since "2 weeks ago"`).
+
+Consider maintaining a simple script (e.g. `scripts/update_pi.sh`) that wraps the `git pull`, `setup_pi.sh`, and environment exports if you update frequently.
 
 ## Raspberry Pi Zero tips (armv6) for Skyfield/NumPy/Pillow
 
@@ -141,6 +184,13 @@ pip install waveshare-epd
 ```
 
 If you use the touch HAT, ensure I2C remains enabled (`sudo raspi-config` → Interface Options → I2C) and that the GT1151 device shows up on `/dev/i2c-1`.
+
+To wipe the display when shutting down, run:
+
+```bash
+python lunar_pi_skyfield.py --backend epd --epd-variant TP_V4 --epd-clear
+```
+`--no-sleep` keeps the panel awake after clearing if you plan to refresh immediately again.
 
 7) Verify environment and run
 

@@ -133,7 +133,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 	parser.add_argument("--output", "-o", default="lunar_output.png", help="Output PNG path when using file backend")
 	parser.add_argument("--rotate", type=int, default=0, help="Rotate output clockwise in degrees (0/90/180/270)")
 	parser.add_argument("--epd-model", default="2in13", help="Waveshare model, e.g., 2in13 (default), 7in5, 7in5b")
-	parser.add_argument("--epd-variant", default="auto", help="Waveshare variant (model-specific): auto, V4, V3, V2, V1")
+	parser.add_argument(
+		"--epd-variant",
+		default="auto",
+		help=(
+			"Waveshare variant (model-specific). Non-touch: auto, V4, V3, V2, V1. "
+			"Touch: TP_V4, TP_V3, TP_V2."
+		),
+	)
+	parser.add_argument("--epd-clear", action="store_true", help="Clear Waveshare display to white and exit (requires epd backend)")
 	parser.add_argument("--no-sleep", action="store_true", help="Do not put the EPD to sleep after rendering")
 	parser.add_argument(
 		"--epd-lib-path",
@@ -143,7 +151,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 			"If set, this is added to sys.path and EPD_LIB_PATH is exported before loading the backend."
 		),
 	)
-	return parser.parse_args(argv)
+	args = parser.parse_args(argv)
+	if args.epd_clear and args.backend != "epd":
+		parser.error("--epd-clear requires --backend epd")
+	return args
 
 
 def main(argv: list[str] | None = None):
@@ -215,6 +226,18 @@ def main(argv: list[str] | None = None):
 			print("- If using the Waveshare repo, pass --epd-lib-path /path/to/e-Paper/RaspberryPi_Jetson_Nano/python/lib")
 			print("- See README: Raspberry Pi setup (SPI enablement, Waveshare e-Paper repo)")
 			sys.exit(2)
+
+	if args.backend == "epd" and args.epd_clear:
+		try:
+			backend.clear()
+		except Exception as e:
+			print("[ERROR] Failed to clear EPD:")
+			print(f"        {e}")
+			sys.exit(4)
+		if not args.no_sleep:
+			backend.sleep()
+		print("EPD cleared to white")
+		return
 
 	# Apply rotation at the backend level; for file backend we can rotate here to keep the saved file matching expectation
 	if args.backend == "file" and args.rotate:
