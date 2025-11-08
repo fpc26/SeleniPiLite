@@ -19,8 +19,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+import glob
+import inspect
 import os
 import sys
+import traceback
 from PIL import Image
 
 
@@ -132,15 +135,23 @@ class WaveshareEPDBackend(DisplayBackend):
         # Consider both folder name variants used by the repos (e-Paper and Touch_e-Paper_HAT)
         repo_variants = ["RaspberryPi_Jetson_Nano", "RaspberryPi_JetsonNano"]
         touch_repo_names = ["Touch_e-Paper_HAT", "Touch-e-Paper_HAT"]
-        for base in [proj_root, os.path.expanduser("~")]:
+        scan_bases = [proj_root, os.path.expanduser("~")]
+        for base in scan_bases:
             for variant in repo_variants:
-                # Official e-Paper repo
+                # Official e-Paper repo (waveshare_epd)
                 lib_path = os.path.join(base, "e-Paper", variant, "python", "lib")
                 candidate_paths.extend(_path_variants(lib_path))
-                # Touch e-Paper HAT repo
+                # Touch e-Paper HAT repo (TP_lib)
                 for touch_repo in touch_repo_names:
                     touch_lib = os.path.join(base, touch_repo, variant, "python", "lib")
                     candidate_paths.extend(_path_variants(touch_lib))
+            # Fallback: glob the repo in case folder naming changed (future-proof)
+            for pattern in [
+                os.path.join(base, "e-Paper", "**", "python", "lib"),
+                os.path.join(base, "Touch*Paper_HAT", "**", "python", "lib"),
+            ]:
+                for lib_path in glob.glob(pattern, recursive=True):
+                    candidate_paths.extend(_path_variants(lib_path))
 
         added_paths: list[str] = []
         for p in candidate_paths:
@@ -236,6 +247,8 @@ class WaveshareEPDBackend(DisplayBackend):
         candidates = _model_module_candidates(self.model)
 
         last_err: Optional[Exception] = None
+        last_err_module: Optional[str] = None
+        last_err_trace: Optional[str] = None
         for mod_name, class_name in candidates:
             try:
                 module = __import__(mod_name, fromlist=[class_name])
@@ -246,15 +259,20 @@ class WaveshareEPDBackend(DisplayBackend):
                     epd = epd_cls()
                 except Exception as e:
                     # If instantiation fails (e.g., RuntimeError: Failed to add edge detection),
-                    # stop trying other variants and raise with helpful hints.
+                    # stop trying other variants and raise with helpful hints. Capture traceback
                     last_err = e
+                    last_err_module = mod_name
+                    last_err_trace = traceback.format_exc()
                     _call_module_exit(module)
                     break
                 self._module = module
                 self._epd = epd
                 break
             except Exception as e:  # ImportError or attribute errors
+                # Capture the import/attribute error and continue trying other candidates
                 last_err = e
+                last_err_module = mod_name
+                last_err_trace = traceback.format_exc()
                 continue
 
         if self._epd is None:
@@ -278,6 +296,7 @@ class WaveshareEPDBackend(DisplayBackend):
             )
             paths_info = ("\nSearched paths added to sys.path:\n  - " + "\n  - ".join(added_paths)) if added_paths else ""
             smbus_hint = ""
+            edge_hint = ""
             if isinstance(last_err, ModuleNotFoundError) and last_err.name == "smbus":
                 smbus_hint = (
                     "\nMissing dependency: smbus (I2C). Install via 'sudo apt install python3-smbus' "
@@ -285,17 +304,62 @@ class WaveshareEPDBackend(DisplayBackend):
                 )
                 if not smbus_available:
                     smbus_hint += " (smbus2 can act as a drop-in replacement)."
+            if isinstance(last_err, RuntimeError) and "Failed to add edge detection" in str(last_err):
+                edge_hint = (
+                    "\nDetected gpiozero/RPi.GPIO edge-detection failure on the BUSY or INT pin. "
+                    "Typical fixes:\n"
+                    "  - Install lgpio so gpiozero can use the modern pin backend:\n"
+                    "        sudo apt install python3-lgpio    # or: pip install lgpio\n"
+                    "        export GPIOZERO_PIN_FACTORY=lgpio\n"
+                    "  - Or use the pigpio backend (requires daemon):\n"
+                    "        sudo apt install pigpio\n"
+                    "        sudo systemctl enable --now pigpiod\n"
+                    "        export GPIOZERO_PIN_FACTORY=pigpio\n"
+                    "  - As a quick test, run the script with sudo to rule out permission issues.\n"
+                    "If none of these help, the busy/interrupt pin may already be in use by another process."
+                )
 
+            trace_info = f"\nLast attempted module: {last_err_module}\nTraceback (most recent call last):\n{last_err_trace}" if last_err_trace else ""
             raise RuntimeError(
-                f"Failed to load EPD driver for model '{self.model}' (last error: {last_err}).\n{hint}{smbus_hint}{paths_info}"
+                f"Failed to load EPD driver for model '{self.model}' (last error: {last_err}).\n{hint}{smbus_hint}{edge_hint}{paths_info}{trace_info}"
             )
 
         self._loaded = True
 
-        # Initialize once (support both init and Init)
+        # Initialize once (support both init and Init). Some touch drivers require an
+        # explicit update-mode argument; detect that so our call stays compatible.
         init = getattr(self._epd, "init", None) or getattr(self._epd, "Init", None)
         if callable(init):
-            init()
+            try:
+                sig = inspect.signature(init)
+            except (TypeError, ValueError):  # signature may fail on builtins
+                sig = None
+
+            update_arg = None
+            if sig is not None:
+                params = list(sig.parameters.values())
+                # Bound methods omit 'self', so a single required param still needs value.
+                if params:
+                    first = params[0]
+                    needs_arg = first.default is inspect._empty
+                else:
+                    needs_arg = False
+                if needs_arg:
+                    for attr in ("FULL_UPDATE", "E_FULL_UPDATE", "EPD_FULL_UPDATE"):
+                        update_arg = getattr(self._epd, attr, None)
+                        if update_arg is not None:
+                            break
+                    if update_arg is None:
+                        update_arg = 0  # sensible default: full refresh
+
+            try:
+                if update_arg is not None:
+                    init(update_arg)
+                else:
+                    init()
+            except TypeError:
+                # Some drivers accept optional arg but provide default; retry sans arg
+                init()
         else:
             # Some older drivers auto-init on construction
             pass

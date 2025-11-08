@@ -3,6 +3,7 @@ import os
 import datetime
 import math
 import argparse
+import time
 from zoneinfo import ZoneInfo
 from skyfield.api import load, wgs84
 from skyfield import almanac
@@ -145,6 +146,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 	parser.add_argument("--epd-clear", action="store_true", help="Clear Waveshare display to white and exit (requires epd backend)")
 	parser.add_argument("--no-sleep", action="store_true", help="Do not put the EPD to sleep after rendering")
 	parser.add_argument(
+		"--epd-auto-clear-delay",
+		type=int,
+		default=600,
+		help=(
+			"Seconds to wait before automatically clearing the EPD and shutting down the driver. "
+			"Use 0 to disable (default: 600 seconds / 10 minutes)."
+		),
+	)
+	parser.add_argument(
 		"--epd-lib-path",
 		default=None,
 		help=(
@@ -155,7 +165,31 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 	args = parser.parse_args(argv)
 	if args.epd_clear and args.backend != "epd":
 		parser.error("--epd-clear requires --backend epd")
+	if args.epd_auto_clear_delay < 0:
+		parser.error("--epd-auto-clear-delay must be zero or a positive number of seconds")
 	return args
+
+
+def _epd_clear_after_delay(backend, delay: int, sleep_after: bool) -> None:
+	"""Wait the requested delay, clear the panel, and shut down the backend."""
+	if delay <= 0 or backend is None:
+		backend.shutdown(sleep=sleep_after)
+		return
+
+	minutes = delay / 60
+	print(f"Auto-clear scheduled: clearing the panel in {minutes:.1f} minute(s). Press Ctrl+C to clear immediately.")
+	try:
+		time.sleep(delay)
+	except KeyboardInterrupt:
+		print("Interrupt received, clearing panel now...")
+
+	try:
+		backend.clear()
+	except Exception as err:
+		print(f"[WARN] Auto-clear failed: {err}")
+	finally:
+		backend.shutdown(sleep=sleep_after)
+		print("EPD cleared and backend shut down.")
 
 
 def main(argv: list[str] | None = None):
@@ -266,8 +300,10 @@ def main(argv: list[str] | None = None):
 	if args.backend == "file":
 		print(f"Output saved as {args.output}")
 	else:
-		backend.shutdown(sleep=not args.no_sleep)
 		print("Output sent to Waveshare e-Paper display")
+		if args.epd_auto_clear_delay <= 0:
+			print("Auto-clear disabled; remember to clear the panel when you're done.")
+		_epd_clear_after_delay(backend, args.epd_auto_clear_delay, not args.no_sleep)
 
 
 if __name__ == "__main__":

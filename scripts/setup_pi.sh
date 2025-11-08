@@ -21,7 +21,7 @@ sudo apt-get update -y
 sudo apt-get install -y \
   python3-dev python3-setuptools python3-venv \
   libjpeg-dev zlib1g-dev libfreetype-dev libopenjp2-7 \
-  python3-smbus i2c-tools || true
+  python3-smbus i2c-tools python3-lgpio || true
 # GPIO helpers and pigpio daemon (more reliable edge detection than RPi.GPIO on some setups)
 sudo apt-get install -y pigpio python3-pigpio || true
 sudo systemctl enable --now pigpiod || true
@@ -92,7 +92,7 @@ echo "[6/7] Installing project requirements and Raspberry Pi deps"
 # GPIO/SPI modules via pip so they are available inside venv
 "$VENV_PIP" install --prefer-binary --only-binary=:all: \
   --extra-index-url https://www.piwheels.org/simple \
-  RPi.GPIO spidev gpiozero pigpio smbus2
+  RPi.GPIO spidev gpiozero pigpio lgpio smbus2
 
 echo "Skipping Waveshare EPD pip install (no official package). Clone the matching vendor repo:"
 echo "  # Touch-enabled HATs"

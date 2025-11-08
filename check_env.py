@@ -13,6 +13,7 @@ This validates:
 
 from __future__ import annotations
 
+import glob
 import os
 import sys
 import platform
@@ -70,7 +71,8 @@ def _discover_epd_paths() -> list[str]:
         if env_path.endswith("waveshare_epd") or env_path.endswith("TP_lib"):
             candidates.append(os.path.dirname(env_path))
     touch_repo_names = ["Touch_e-Paper_HAT", "Touch-e-Paper_HAT"]
-    for base in [proj_root, os.path.expanduser(os.path.join("~"))]:
+    scan_bases = [proj_root, os.path.expanduser(os.path.join("~"))]
+    for base in scan_bases:
         for v in variants:
             # Official e-Paper repo
             lib = os.path.join(base, "e-Paper", v, "python", "lib")
@@ -83,6 +85,15 @@ def _discover_epd_paths() -> list[str]:
                 candidates.append(lib_t)
                 candidates.append(os.path.join(lib_t, "waveshare_epd"))
                 candidates.append(os.path.join(lib_t, "TP_lib"))
+        # Fallback glob search to pick up future vendor directory changes
+        for pattern in [
+            os.path.join(base, "e-Paper", "**", "python", "lib"),
+            os.path.join(base, "Touch*Paper_HAT", "**", "python", "lib"),
+        ]:
+            for lib_path in glob.glob(pattern, recursive=True):
+                candidates.append(lib_path)
+                candidates.append(os.path.join(lib_path, "waveshare_epd"))
+                candidates.append(os.path.join(lib_path, "TP_lib"))
     return [p for p in candidates if p and os.path.isdir(p)]
 
 
