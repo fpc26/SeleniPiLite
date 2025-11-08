@@ -37,6 +37,7 @@ Quick bootstrap (recommended on Raspberry Pi):
 cd rbpi_eink_2.13
 # Optional: choose a custom venv name (default: lunar)
 # VENV_NAME=myenv bash scripts/setup_pi.sh
+# The script will recreate the venv if it is missing an activate script.
 bash scripts/setup_pi.sh
 ```
 

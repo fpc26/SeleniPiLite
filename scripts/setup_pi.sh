@@ -47,7 +47,11 @@ if [[ -z "$PY_CMD" ]]; then
   exit 1
 fi
 
-if [[ ! -d "$VENV_DIR" ]]; then
+if [[ ! -d "$VENV_DIR" || ! -f "$VENV_DIR/bin/activate" ]]; then
+  if [[ -e "$VENV_DIR" && ! -f "$VENV_DIR/bin/activate" ]]; then
+    echo "[3/7] Existing venv folder missing activate script; recreating"
+    rm -rf "$VENV_DIR"
+  fi
   "$PY_CMD" -m venv "$VENV_DIR"
 fi
 source "$VENV_DIR/bin/activate"
