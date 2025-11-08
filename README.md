@@ -1,4 +1,4 @@
-# SeleniPi_Lite
+# rbpi_eink_2.13
 RBPi Lunar Tracker - RBPi Z & E-ink display
 
 ## Quick start
@@ -28,6 +28,7 @@ Options:
 - `--rotate 0|90|180|270` rotate output clockwise
 - `--no-sleep` keep the EPD awake (useful when chaining updates)
 - `--epd-variant` accepts `auto`, `V4|V3|V2|V1` (non-touch) or `TP_V4|TP_V3|TP_V2` for touch HATs
+- `--epd-touch` forces use of the touch TP_lib drivers (defaults variant to TP_V4 if left as auto)
 - `--epd-clear` clears the Waveshare display to white and exits (touch/non-touch)
 
 ## Raspberry Pi setup (Waveshare 2.13)
@@ -35,7 +36,7 @@ Options:
 Quick bootstrap (recommended on Raspberry Pi):
 
 ```bash
-cd SeleniPi_Lite
+cd rbpi_eink_2.13
 # Optional: choose a custom venv name (default: lunar)
 # VENV_NAME=myenv bash scripts/setup_pi.sh
 # The script will recreate the venv if it is missing an activate script.
@@ -48,7 +49,7 @@ Manual steps (equivalent to the script):
 - `sudo raspi-config` → Interface Options → SPI → Enable
 
 2) Install system packages (Raspberry Pi OS)
-- `sudo apt update && sudo apt install -y python3-pil python3-rpi.gpio python3-spidev`
+- `sudo apt update && sudo apt install -y python3-pil python3-rpi.gpio python3-spidev python3-smbus i2c-tools`
 
 3) Install Python deps
 - In your venv: `pip install -r requirements.txt`
@@ -84,47 +85,6 @@ Troubleshooting:
 - Orientation flipped or rotated: use `--rotate 90|180|270` or adjust the board variant with `--epd-variant`.
 
 Tip: Skyfield will download `de421.bsp` on first run and cache it. To pre-seed on a headless Pi, copy the file next to `lunar_pi_skyfield.py`, or set `SKYFIELD_EPH=/path/to/de421.bsp`.
-
-## Updating this project on Raspberry Pi
-
-Typical workflow once you have cloned the repo on your Pi:
-
-1. **Stop any scripts** that are currently using the display.
-2. Change into the project directory and pull the latest code:
-
-  ```bash
-  cd ~/Documents/rbpi_eink_2.13
-  git pull origin main
-  ```
-
-  If you have local changes, stash or commit them before pulling: `git stash push`.
-
-3. **Refresh the virtual environment** in case dependencies changed:
-
-  ```bash
-  bash scripts/setup_pi.sh
-  ```
-
-  The script is idempotent; it recreates the venv if needed and re-runs `pip install -r requirements.txt`.
-
-4. **Export Waveshare paths** again if you rely on environment variables (e.g. add to `~/.bashrc`):
-
-  ```bash
-  export PYTHONPATH=~/Touch_e-Paper_HAT/python/lib:~/Touch_e-Paper_HAT/python/lib/TP_lib:$PYTHONPATH
-  export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib
-  ```
-
-5. **Verify things still work**:
-
-  ```bash
-  source .venv/lunar/bin/activate
-  python check_env.py
-  python lunar_pi_skyfield.py --backend epd --epd-variant TP_V4 --rotate 0
-  ```
-
-6. If the output looks wrong, review recent changes in the repo to adjust configuration or arguments (`git log --oneline --since "2 weeks ago"`).
-
-Consider maintaining a simple script (e.g. `scripts/update_pi.sh`) that wraps the `git pull`, `setup_pi.sh`, and environment exports if you update frequently.
 
 ## Raspberry Pi Zero tips (armv6) for Skyfield/NumPy/Pillow
 
@@ -176,6 +136,7 @@ sudo apt-get install -y python3-rpi.gpio python3-spidev
 git clone https://github.com/waveshare/Touch_e-Paper_HAT ~/Touch_e-Paper_HAT
 export PYTHONPATH=~/Touch_e-Paper_HAT/python/lib:~/Touch_e-Paper_HAT/python/lib/TP_lib:$PYTHONPATH
 export EPD_TOUCH_VARIANT=TP_V4  # optional helper when scripting
+pip install --prefer-binary smbus2  # fallback when python3-smbus is unavailable for your Python build
 # Non-touch HATs
 git clone https://github.com/waveshare/e-Paper ~/e-Paper
 export PYTHONPATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib:$PYTHONPATH
@@ -184,11 +145,14 @@ pip install waveshare-epd
 ```
 
 If you use the touch HAT, ensure I2C remains enabled (`sudo raspi-config` → Interface Options → I2C) and that the GT1151 device shows up on `/dev/i2c-1`.
+Install an I2C backend for Python (`sudo apt install python3-smbus` for the distro interpreter, and `pip install smbus2` inside the venv) so the touch controller can talk over I2C.
 
 To wipe the display when shutting down, run:
 
 ```bash
 python lunar_pi_skyfield.py --backend epd --epd-variant TP_V4 --epd-clear
+# or explicitly force the touch driver auto-detection
+python lunar_pi_skyfield.py --backend epd --epd-touch --epd-clear
 ```
 `--no-sleep` keeps the panel awake after clearing if you plan to refresh immediately again.
 
@@ -208,5 +172,5 @@ pip config set global.prefer-binary true
 pip config set global.only-binary :all:
 ```
 
-# SeleniPi_Lite
+# rbpi_eink_2.13
 RBPi Lunar Tracker - RBPi Z &amp; E-ink display

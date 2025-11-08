@@ -20,7 +20,8 @@ echo "[2/7] Installing system libraries for Pillow/NumPy"
 sudo apt-get update -y
 sudo apt-get install -y \
   python3-dev python3-setuptools python3-venv \
-  libjpeg-dev zlib1g-dev libfreetype-dev libopenjp2-7 || true
+  libjpeg-dev zlib1g-dev libfreetype-dev libopenjp2-7 \
+  python3-smbus i2c-tools || true
 # GPIO helpers and pigpio daemon (more reliable edge detection than RPi.GPIO on some setups)
 sudo apt-get install -y pigpio python3-pigpio || true
 sudo systemctl enable --now pigpiod || true
@@ -91,7 +92,7 @@ echo "[6/7] Installing project requirements and Raspberry Pi deps"
 # GPIO/SPI modules via pip so they are available inside venv
 "$VENV_PIP" install --prefer-binary --only-binary=:all: \
   --extra-index-url https://www.piwheels.org/simple \
-  RPi.GPIO spidev gpiozero pigpio
+  RPi.GPIO spidev gpiozero pigpio smbus2
 
 echo "Skipping Waveshare EPD pip install (no official package). Clone the matching vendor repo:"
 echo "  # Touch-enabled HATs"
@@ -117,4 +118,5 @@ echo "  export GPIOZERO_PIN_FACTORY=pigpio"
 echo
 echo "Try running:"
 echo "  source $VENV_DIR/bin/activate"
-echo "  python lunar_pi_skyfield.py --backend epd --epd-variant auto --rotate 0  # use TP_V4 for touch"
+echo "  python lunar_pi_skyfield.py --backend epd --epd-variant auto --rotate 0"
+echo "  # Touch panels: add --epd-touch (defaults to TP_V4)"

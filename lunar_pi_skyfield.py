@@ -141,6 +141,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 			"Touch: TP_V4, TP_V3, TP_V2."
 		),
 	)
+	parser.add_argument("--epd-touch", action="store_true", help="Use Waveshare touch drivers (TP_lib) for 2.13\" panels")
 	parser.add_argument("--epd-clear", action="store_true", help="Clear Waveshare display to white and exit (requires epd backend)")
 	parser.add_argument("--no-sleep", action="store_true", help="Do not put the EPD to sleep after rendering")
 	parser.add_argument(
@@ -159,6 +160,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None):
 	args = parse_args(argv or sys.argv[1:])
+	if args.epd_touch and args.epd_variant.lower() == "auto":
+		args.epd_variant = "TP_V4"
 
 	tz = ZoneInfo(TZ_NAME)
 	if args.date:
@@ -216,8 +219,15 @@ def main(argv: list[str] | None = None):
 	if args.backend == "file":
 		backend = FileBackend(path=args.output)
 	else:
+		touch_mode = args.epd_touch or args.epd_variant.upper().startswith("TP")
 		try:
-			backend = WaveshareEPDBackend(model=args.epd_model, variant=args.epd_variant, rotate=args.rotate, sleep_after=not args.no_sleep)
+			backend = WaveshareEPDBackend(
+				model=args.epd_model,
+				variant=args.epd_variant,
+				rotate=args.rotate,
+				sleep_after=not args.no_sleep,
+				touch=touch_mode,
+			)
 		except Exception as e:
 			print("[ERROR] Failed to initialize Waveshare EPD backend:")
 			print(f"        {e}")
@@ -234,8 +244,7 @@ def main(argv: list[str] | None = None):
 			print("[ERROR] Failed to clear EPD:")
 			print(f"        {e}")
 			sys.exit(4)
-		if not args.no_sleep:
-			backend.sleep()
+		backend.shutdown(sleep=not args.no_sleep)
 		print("EPD cleared to white")
 		return
 
@@ -257,6 +266,7 @@ def main(argv: list[str] | None = None):
 	if args.backend == "file":
 		print(f"Output saved as {args.output}")
 	else:
+		backend.shutdown(sleep=not args.no_sleep)
 		print("Output sent to Waveshare e-Paper display")
 
 

@@ -60,14 +60,24 @@ class WaveshareEPDBackend(DisplayBackend):
     - sleep_after: put the display to sleep after rendering
     """
 
-    def __init__(self, model: str = "2in13", variant: str = "auto", rotate: int = 0, sleep_after: bool = True):
+    def __init__(
+        self,
+        model: str = "2in13",
+        variant: str = "auto",
+        rotate: int = 0,
+        sleep_after: bool = True,
+        touch: bool = False,
+    ):
         self.model = (model or "2in13").lower()
         self.variant = (variant or "auto").upper()
         self.rotate = rotate % 360
         self.sleep_after = sleep_after
+        self.touch = touch or self.variant.startswith("TP")
 
         self._epd = None
         self._module = None
+        self._loaded = False
+        self._did_exit = False
         self._load_driver()
 
     def _load_driver(self) -> None:
@@ -97,6 +107,19 @@ class WaveshareEPDBackend(DisplayBackend):
                 paths.add(os.path.join(parent, "waveshare_epd"))
             return [p for p in paths if p]
 
+        def _call_module_exit(module: object) -> None:
+            cfg = getattr(module, "epdconfig", None) or getattr(module, "config", None)
+            if cfg is None:
+                return
+            for name in ("module_exit", "Module_Exit"):
+                fn = getattr(cfg, name, None)
+                if callable(fn):
+                    try:
+                        fn()
+                    except Exception:
+                        pass
+                    break
+
         candidate_paths: list[str] = []
         env_path = os.environ.get("EPD_LIB_PATH")
         if env_path:
@@ -124,6 +147,20 @@ class WaveshareEPDBackend(DisplayBackend):
             if p and os.path.isdir(p) and p not in sys.path:
                 sys.path.insert(0, p)
                 added_paths.append(p)
+
+        # Ensure smbus is importable; fall back to smbus2 if available (useful with Python builds lacking smbus)
+        smbus_available = True
+        try:  # pragma: no cover - environment dependent
+            import smbus  # type: ignore
+        except ModuleNotFoundError:
+            smbus_available = False
+            try:
+                import smbus2 as _smbus2  # type: ignore
+
+                sys.modules.setdefault("smbus", _smbus2)
+                smbus_available = True
+            except ModuleNotFoundError:
+                pass
 
         # Try commonly used module/class names
         candidates = []
@@ -153,6 +190,20 @@ class WaveshareEPDBackend(DisplayBackend):
             normalized_variant = self.variant.replace("-", "_")
             variant_key = touch_variant_aliases.get(normalized_variant)
 
+            if self.touch:
+                # Touch drivers only exist for 2.13" family
+                if m != "2in13":
+                    raise RuntimeError("Touch driver support is currently limited to the 2in13 model")
+                if self.variant == "AUTO":
+                    modules = ["TP_lib.epd2in13_V4", "TP_lib.epd2in13_V3", "TP_lib.epd2in13_V2"]
+                else:
+                    modules = touch_variant_modules.get(variant_key or normalized_variant)
+                    if not modules:
+                        raise RuntimeError(f"Unknown touch variant '{self.variant}' for model '{self.model}'")
+                for mod in modules:
+                    names.append((mod, "EPD"))
+                return names
+
             if self.variant == "AUTO":
                 # Try common variants first
                 base_names = [f"epd{m}_V4", f"epd{m}_V3", f"epd{m}_V2", f"epd{m}"]
@@ -162,9 +213,6 @@ class WaveshareEPDBackend(DisplayBackend):
                 extra = []
                 if m == "2in13":
                     extra = ["epd2in13d", "epd2in13g"]
-                    for mod in ["TP_lib.epd2in13_V4", "TP_lib.epd2in13_V3", "TP_lib.epd2in13_V2"]:
-                        names.append((mod, "EPD"))
-                        names.append((mod.split(".", 1)[-1], "EPD"))
                 all_mods = base_names + tri + extra
                 for mod in all_mods:
                     names.append((f"waveshare_epd.{mod}", "EPD"))
@@ -174,7 +222,6 @@ class WaveshareEPDBackend(DisplayBackend):
                 if variant_key and m == "2in13":
                     for mod in touch_variant_modules.get(variant_key, []):
                         names.append((mod, "EPD"))
-                        names.append((mod.split(".", 1)[-1], "EPD"))
                     return names
                 mod_suffix = f"epd{m}_{self.variant}"
                 names.append((f"waveshare_epd.{mod_suffix}", "EPD"))
@@ -201,6 +248,7 @@ class WaveshareEPDBackend(DisplayBackend):
                     # If instantiation fails (e.g., RuntimeError: Failed to add edge detection),
                     # stop trying other variants and raise with helpful hints.
                     last_err = e
+                    _call_module_exit(module)
                     break
                 self._module = module
                 self._epd = epd
@@ -229,9 +277,20 @@ class WaveshareEPDBackend(DisplayBackend):
                 "    sudo -E python your_script.py --backend epd ...\n"
             )
             paths_info = ("\nSearched paths added to sys.path:\n  - " + "\n  - ".join(added_paths)) if added_paths else ""
+            smbus_hint = ""
+            if isinstance(last_err, ModuleNotFoundError) and last_err.name == "smbus":
+                smbus_hint = (
+                    "\nMissing dependency: smbus (I2C). Install via 'sudo apt install python3-smbus' "
+                    "or 'pip install smbus2' and rerun."
+                )
+                if not smbus_available:
+                    smbus_hint += " (smbus2 can act as a drop-in replacement)."
+
             raise RuntimeError(
-                f"Failed to load EPD driver for model '{self.model}' (last error: {last_err}).\n{hint}{paths_info}"
+                f"Failed to load EPD driver for model '{self.model}' (last error: {last_err}).\n{hint}{smbus_hint}{paths_info}"
             )
+
+        self._loaded = True
 
         # Initialize once (support both init and Init)
         init = getattr(self._epd, "init", None) or getattr(self._epd, "Init", None)
@@ -302,7 +361,7 @@ class WaveshareEPDBackend(DisplayBackend):
                 raise
         finally:
             if self.sleep_after:
-                self.sleep()
+                self.shutdown()
 
     def clear(self, color: int = 0xFF) -> None:
         """Clear the display to the specified color (default: white)."""
@@ -310,6 +369,7 @@ class WaveshareEPDBackend(DisplayBackend):
             raise RuntimeError("EPD driver not initialized")
 
         last_err: Optional[Exception] = None
+        cleared = False
         for name in ("Clear", "clear"):
             fn = getattr(self._epd, name, None)
             if callable(fn):
@@ -318,9 +378,15 @@ class WaveshareEPDBackend(DisplayBackend):
                         fn(color)
                     except TypeError:
                         fn()
-                    return
+                    cleared = True
+                    break
                 except Exception as err:
                     last_err = err
+
+        if cleared:
+            if self.sleep_after:
+                self.shutdown()
+            return
 
         # Fallback: draw a blank image via display/getbuffer
         width = getattr(self._epd, "width", None)
@@ -330,6 +396,8 @@ class WaveshareEPDBackend(DisplayBackend):
         if width and height and callable(display) and callable(getbuffer):
             blank = Image.new("1", (width, height), 255 if color else 0)
             display(getbuffer(blank))
+            if self.sleep_after:
+                self.shutdown()
             return
 
         if last_err:
@@ -349,6 +417,32 @@ class WaveshareEPDBackend(DisplayBackend):
                     pass
                 break
 
+    def shutdown(self, sleep: bool | None = None) -> None:
+        """Put panel to sleep (optional) and release GPIO resources via module_exit."""
+        if not self._loaded or self._did_exit:
+            return
+        do_sleep = self.sleep_after if sleep is None else sleep
+        if do_sleep:
+            self.sleep()
+        self._module_exit()
+
+    def _module_exit(self) -> None:
+        if self._did_exit:
+            return
+        cfg = None
+        if self._module is not None:
+            cfg = getattr(self._module, "epdconfig", None) or getattr(self._module, "config", None)
+        if cfg is not None:
+            for name in ("module_exit", "Module_Exit"):
+                fn = getattr(cfg, name, None)
+                if callable(fn):
+                    try:
+                        fn()
+                    except Exception:
+                        pass
+                    break
+        self._did_exit = True
+
 
 class WaveshareEPD2in13Backend(WaveshareEPDBackend):
     """Backward-compatible alias for 2.13" displays.
@@ -356,5 +450,5 @@ class WaveshareEPD2in13Backend(WaveshareEPDBackend):
     Kept for existing callers; equivalent to WaveshareEPDBackend(model="2in13", ...).
     """
 
-    def __init__(self, variant: str = "auto", rotate: int = 0, sleep_after: bool = True):
-        super().__init__(model="2in13", variant=variant, rotate=rotate, sleep_after=sleep_after)
+    def __init__(self, variant: str = "auto", rotate: int = 0, sleep_after: bool = True, touch: bool = False):
+        super().__init__(model="2in13", variant=variant, rotate=rotate, sleep_after=sleep_after, touch=touch)

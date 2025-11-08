@@ -25,8 +25,17 @@ def _check_module(name: str) -> Tuple[bool, str]:
     try:
         importlib.import_module(name)
         return True, "ok"
-    except Exception as e:
+    except ModuleNotFoundError as e:
+        if name == "smbus":
+            try:
+                smbus2 = importlib.import_module("smbus2")
+                sys.modules.setdefault("smbus", smbus2)
+                return True, "using smbus2"
+            except Exception:
+                pass
         return False, f"missing: {e}"
+    except Exception as e:
+        return False, f"error: {e}"
 
 
 def _check_spi_nodes() -> Tuple[bool, str]:
@@ -83,7 +92,7 @@ def main() -> int:
     print(f"Platform: {platform.system()} {platform.release()} ({platform.machine()})")
 
     print("\n-- Python modules --")
-    for mod in ["PIL", "spidev", "RPi.GPIO"]:
+    for mod in ["PIL", "spidev", "RPi.GPIO", "smbus"]:
         ok, msg = _check_module(mod)
         status = "OK" if ok else "FAIL"
         print(f"{mod:12s}: {status:4s} - {msg}")
