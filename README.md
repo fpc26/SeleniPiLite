@@ -27,6 +27,7 @@ Options:
 - `--date YYYY-MM-DD` render a specific date
 - `--rotate 0|90|180|270` rotate output clockwise
 - `--no-sleep` keep the EPD awake (useful when chaining updates)
+- `--epd-variant` accepts `auto`, `V4|V3|V2|V1` (non-touch) or `TP_V4|TP_V3|TP_V2` for touch HATs
 
 ## Raspberry Pi setup (Waveshare 2.13)
 
@@ -50,13 +51,13 @@ Manual steps (equivalent to the script):
 3) Install Python deps
 - In your venv: `pip install -r requirements.txt`
 
-4) Install Waveshare Python library (choose one path)
 - Touch-enabled HATs (GT1151 controller):
   - `git clone https://github.com/waveshare/Touch_e-Paper_HAT ~/Touch_e-Paper_HAT`
   - Export either of these so drivers can be found:
     - `export EPD_LIB_PATH=~/Touch_e-Paper_HAT/python/lib`
     - `export PYTHONPATH=~/Touch_e-Paper_HAT/python/lib:~/Touch_e-Paper_HAT/python/lib/TP_lib:$PYTHONPATH`
   - Keep both SPI and I2C enabled and confirm `i2cdetect -y 1` shows the touch controller (0x5d).
+  - Use `--epd-variant TP_V4` (or TP_V3/TP_V2) when running this project.
 - Non-touch HATs:
   - `git clone https://github.com/waveshare/e-Paper ~/e-Paper`
   - Export the driver path:
@@ -130,6 +131,7 @@ sudo apt-get install -y python3-rpi.gpio python3-spidev
 # Touch-enabled HATs
 git clone https://github.com/waveshare/Touch_e-Paper_HAT ~/Touch_e-Paper_HAT
 export PYTHONPATH=~/Touch_e-Paper_HAT/python/lib:~/Touch_e-Paper_HAT/python/lib/TP_lib:$PYTHONPATH
+export EPD_TOUCH_VARIANT=TP_V4  # optional helper when scripting
 # Non-touch HATs
 git clone https://github.com/waveshare/e-Paper ~/e-Paper
 export PYTHONPATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib:$PYTHONPATH

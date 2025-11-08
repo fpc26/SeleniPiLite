@@ -101,6 +101,8 @@ def main() -> int:
         "waveshare_epd.epd2in13_V2", "waveshare_epd.epd2in13",
         "waveshare_epd.epd2in13b_V3", "waveshare_epd.epd2in13b_V4",
         "waveshare_epd.epd2in13d", "waveshare_epd.epd2in13g",
+        # 2.13 touch family (Touch_e-Paper_HAT)
+        "TP_lib.epd2in13_V4", "TP_lib.epd2in13_V3", "TP_lib.epd2in13_V2",
         # 7.5 family
         "waveshare_epd.epd7in5_V3", "waveshare_epd.epd7in5_V2", "waveshare_epd.epd7in5",
         "waveshare_epd.epd7in5b_V2", "waveshare_epd.epd7in5b",

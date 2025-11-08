@@ -52,6 +52,11 @@ if [[ ! -d "$VENV_DIR" ]]; then
 fi
 source "$VENV_DIR/bin/activate"
 
+# Ensure common interpreter aliases point inside the venv (helps when shell aliases use python3.13)
+if [[ "$PY_CMD" == "python3.13" && -x "$VENV_DIR/bin/python" && ! -e "$VENV_DIR/bin/python3.13" ]]; then
+  ln -sf python "$VENV_DIR/bin/python3.13"
+fi
+
 # Use venv-local executables explicitly to avoid system pip with PEP 668
 VENV_PY="$VENV_DIR/bin/python"
 VENV_PIP="$VENV_DIR/bin/pip"
@@ -107,4 +112,4 @@ echo "  export GPIOZERO_PIN_FACTORY=pigpio"
 echo
 echo "Try running:"
 echo "  source $VENV_DIR/bin/activate"
-echo "  python lunar_pi_skyfield.py --backend epd --epd-variant auto --rotate 0"
+echo "  python lunar_pi_skyfield.py --backend epd --epd-variant auto --rotate 0  # use TP_V4 for touch"

@@ -102,6 +102,29 @@ class WaveshareEPDBackend(DisplayBackend):
         def _model_module_candidates(model: str) -> list[tuple[str, str]]:
             m = model.lower()
             names: list[tuple[str, str]] = []
+            # Support Waveshare touch-panel drivers shipped under TP_lib
+            touch_variant_aliases = {
+                "TP_V4": "TP_V4",
+                "TP2IN13_V4": "TP_V4",
+                "TOUCH_V4": "TP_V4",
+                "TPV4": "TP_V4",
+                "TP_V3": "TP_V3",
+                "TP2IN13_V3": "TP_V3",
+                "TOUCH_V3": "TP_V3",
+                "TPV3": "TP_V3",
+                "TP_V2": "TP_V2",
+                "TP2IN13_V2": "TP_V2",
+                "TOUCH_V2": "TP_V2",
+                "TPV2": "TP_V2",
+            }
+            touch_variant_modules = {
+                "TP_V4": ["TP_lib.epd2in13_V4"],
+                "TP_V3": ["TP_lib.epd2in13_V3"],
+                "TP_V2": ["TP_lib.epd2in13_V2"],
+            }
+            normalized_variant = self.variant.replace("-", "_")
+            variant_key = touch_variant_aliases.get(normalized_variant)
+
             if self.variant == "AUTO":
                 # Try common variants first
                 base_names = [f"epd{m}_V4", f"epd{m}_V3", f"epd{m}_V2", f"epd{m}"]
@@ -111,12 +134,20 @@ class WaveshareEPDBackend(DisplayBackend):
                 extra = []
                 if m == "2in13":
                     extra = ["epd2in13d", "epd2in13g"]
+                    for mod in ["TP_lib.epd2in13_V4", "TP_lib.epd2in13_V3", "TP_lib.epd2in13_V2"]:
+                        names.append((mod, "EPD"))
+                        names.append((mod.split(".", 1)[-1], "EPD"))
                 all_mods = base_names + tri + extra
                 for mod in all_mods:
                     names.append((f"waveshare_epd.{mod}", "EPD"))
                 for mod in all_mods:
                     names.append((mod, "EPD"))
             else:
+                if variant_key and m == "2in13":
+                    for mod in touch_variant_modules.get(variant_key, []):
+                        names.append((mod, "EPD"))
+                        names.append((mod.split(".", 1)[-1], "EPD"))
+                    return names
                 mod_suffix = f"epd{m}_{self.variant}"
                 names.append((f"waveshare_epd.{mod_suffix}", "EPD"))
                 names.append((mod_suffix, "EPD"))
