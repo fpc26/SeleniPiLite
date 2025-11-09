@@ -287,7 +287,6 @@ class WaveshareEPDBackend(DisplayBackend):
                 "    export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib\n"
                 "    export EPD_LIB_PATH=~/Touch_e-Paper_HAT/RaspberryPi_Jetson_Nano/python/lib\n"
                 "  Then rerun this script.\n"
-                "  Community packages like 'waveshare-epd' may also work on some platforms.\n"
                 "- On Raspberry Pi: sudo raspi-config -> Interface Options -> SPI: Enable\n"
                 "- GPIO permissions: add your user to 'spi' and 'gpio' groups and log out/in:\n"
                 "    sudo usermod -aG spi,gpio $USER\n"
