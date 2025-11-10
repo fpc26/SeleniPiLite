@@ -1,5 +1,10 @@
-# rbpi_eink_2.13
-RBPi Lunar Tracker - RBPi Z & E-ink display
+# SeleniPiLite
+RBPi Lunar Tracker - RBPi Zero W & E-ink display
+
+## Required Hardware
+[Waveshare 2.13in Touch E-Paper HAT Case](https://www.waveshare.com/2.13inch-touch-e-paper-hat-with-case.htm)
+[RBPi Zero W](https://www.raspberrypi.com/products/raspberry-pi-zero-w/)
+[RBPi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/)
 
 ## Quick start
 
