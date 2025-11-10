@@ -33,6 +33,31 @@ Options:
 - `--epd-touch` forces use of the touch TP_lib drivers (defaults variant to TP_V4 if left as auto)
 - `--epd-clear` clears the Waveshare display to white and exits (touch/non-touch)
 - `--epd-auto-clear-delay` wait N seconds before clearing the panel automatically (default 600, set 0 to disable)
+- `--power-hold-seconds` adjust how long the touch power zone must be held before the panel clears and exits (default 5s)
+- `--touch-poll-ms` tweak touch sampling latency (smaller value = more responsive, default 80ms)
+- `--touch-map` pick a touch orientation correction (auto selects `transpose_invert_x` for the 2.13" TP panel)
+
+## Touch workflow
+
+- Prev/Next buttons show a brief processing card before the next day loads so you know the tap registered.
+- Hold the Sleep/Power zone for the configured `--power-hold-seconds` to clear the panel and shut down cleanly.
+- Touch polling defaults to 80ms; adjust via `--touch-poll-ms` if you want faster taps or a calmer idle loop.
+- Touch orientation auto-detects (`transpose_invert_x` for the Waveshare 2.13" TP) and can be overridden with `--touch-map` when using other panels.
+
+## Touch troubleshooting
+
+1. Run the helper to capture raw readings and all mapping permutations:
+  ```bash
+  python scripts/touch_calibration.py --epd-variant auto --touch-map auto
+  ```
+  The script renders crosshairs on the panel and prints `Raw`, `Normalized`, and each mapping's projected `(x, y)` display coordinate.
+2. Compare the reported coordinates with the on-screen prompts. The mapping whose coordinates line up with the target (e.g., buttons near 45/125/205 on the X axis) is the one to pass to `--touch-map`.
+3. Launch the main app with the mapping that matched your hardware, for example:
+  ```bash
+  python lunar_pi_skyfield.py --backend epd --epd-touch --touch-map transpose_invert_x
+  ```
+4. Still misaligned? Double-check `--rotate` is `0`, ensure `pigpiod` (or your chosen GPIO factory) is running, and experiment with `--touch-poll-ms` to see if a slower poll smooths noisy taps.
+5. If taps intermittently register, inspect the calibration output for jitter (wide raw value swings) and consider reseating the touch FFC or verifying 3.3V stability.
 
 ## Raspberry Pi setup (Waveshare 2.13)
 
