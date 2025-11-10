@@ -6,6 +6,11 @@ RBPi Lunar Tracker - RBPi Zero W & E-ink display
 [RBPi Zero W](https://www.raspberrypi.com/products/raspberry-pi-zero-w/)<br>
 [RBPi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/)<br>
 
+## 🚀 Project Enhancements & Roadmap
+
+Curious about planned improvements and new features?  
+👉 See our up-to-date [Enhancements Tracker](./ENHANCEMENTS.md)!
+
 ## Quick start
 
 Create a virtual environment and install deps:
