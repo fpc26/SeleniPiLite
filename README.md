@@ -2,9 +2,9 @@
 RBPi Lunar Tracker - RBPi Zero W & E-ink display
 
 ## Required Hardware
-[Waveshare 2.13in Touch E-Paper HAT Case](https://www.waveshare.com/2.13inch-touch-e-paper-hat-with-case.htm)
-[RBPi Zero W](https://www.raspberrypi.com/products/raspberry-pi-zero-w/)
-[RBPi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/)
+[Waveshare 2.13in Touch E-Paper HAT Case](https://www.waveshare.com/2.13inch-touch-e-paper-hat-with-case.htm)<br>
+[RBPi Zero W](https://www.raspberrypi.com/products/raspberry-pi-zero-w/)<br>
+[RBPi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/)<br>
 
 ## Quick start
 
@@ -212,6 +212,3 @@ pip config set global.extra-index-url https://www.piwheels.org/simple
 pip config set global.prefer-binary true
 pip config set global.only-binary :all:
 ```
-
-# rbpi_eink_2.13
-RBPi Lunar Tracker - RBPi Z &amp; E-ink display
