@@ -21,7 +21,7 @@ TEST_DATE: Optional[datetime.date] = None  # e.g., datetime.date(2025, 9, 21)
 DEFAULT_LATITUDE = 40.7128
 DEFAULT_LONGITUDE = -74.0060
 DEFAULT_TZ = "America/New_York"
-DEFAULT_LOCATION_NAME = "New York City, NY"
+DEFAULT_LOCATION_NAME = "NYC, NY"
 
 BUTTON_POWER = "power"
 BUTTON_PREV = "prev"

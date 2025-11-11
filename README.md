@@ -6,10 +6,12 @@ RBPi Lunar Tracker - RBPi Z & E-ink display
 Create a virtual environment and install deps:
 
 ```
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
+python3 -m venv .venv/lunar
+. .venv/lunar/bin/activate
+pip install -r requirements.txt 
 ```
+
+If you see `No such file or directory: '.venv/bin/python3'`, remove any stale `.venv` folder from older builds and recreate it with the `lunar` name shown above so the scripts inside the virtual environment point to the right interpreter.
 
 Render to a PNG for desktop testing:
 
