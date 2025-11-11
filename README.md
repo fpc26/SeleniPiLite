@@ -1,7 +1,41 @@
-# rbpi_eink_2.13
-RBPi Lunar Tracker - RBPi Z & E-ink display
+# SeleniPiLite
+RBPi Lunar Tracker - RBPi Zero W & E-ink display
 
-## Quick start
+## Required Hardware
+[Waveshare 2.13in Touch E-Paper HAT Case](https://www.waveshare.com/2.13inch-touch-e-paper-hat-with-case.htm)<br>
+[RBPi Zero W](https://www.raspberrypi.com/products/raspberry-pi-zero-w/)<br>
+[RBPi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/)<br>
+
+## Get the code
+We want to get you tracking the Moon as fast as possible. If you just want the code on your machine, follow one of these tiny options.
+
+Option A — If you have git already (recommended)
+1. Open a Terminal (macOS / Linux) or Git Bash (Windows).
+2. Run these two commands:
+```bash
+git clone https://github.com/fpc26/SeleniPiLite.git
+cd SeleniPiLite
+```
+That's it — you now have a local copy. To update later, run `git pull` inside the SeleniPiLite folder.
+
+Option B — If you don't have git or prefer a ZIP
+1. Click this link in your browser to download the repository as a ZIP archive:
+https://github.com/fpc26/SeleniPiLite/archive/refs/heads/main.zip
+2. Unzip and open the extracted folder.
+
+Need Git? Installers:
+- Windows: Install "Git for Windows" (includes Git Bash): https://git-scm.com/download/win
+- macOS: Install via Homebrew `brew install git` or download from https://git-scm.com
+- Linux: Use your package manager, e.g. `sudo apt install git` (Debian/Ubuntu) or `sudo dnf install git` (Fedora)
+
+If you want, I can also open a tiny pull request that adds these instructions directly into the README for you.
+
+## 🚀 Project Enhancements & Roadmap
+
+Curious about planned improvements and new features?  
+👉 See our up-to-date [Enhancements Tracker](./ENHANCEMENTS.md)!
+
+## Quick start (w/ the code)
 
 Create a virtual environment and install deps:
 
@@ -53,7 +87,7 @@ Options:
   python scripts/touch_calibration.py --epd-variant auto --touch-map auto
   ```
   The script renders crosshairs on the panel and prints `Raw`, `Normalized`, and each mapping's projected `(x, y)` display coordinate.
-2. Compare the reported coordinates with the on-screen prompts. The mapping whose coordinates line up with the target (e.g., buttons near 45/125/205 on the X axis) is the one to pass to `--touch-map`.
+2. Compare the reported coordinates with the on-screen prompts. The mapping whose coordinates line up with the target (e.g., buttons near 45/125/205 on the X axis) is the one to pass to `--touch-m[...]
 3. Launch the main app with the mapping that matched your hardware, for example:
   ```bash
   python lunar_pi_skyfield.py --backend epd --epd-touch --touch-map transpose_invert_x
@@ -102,7 +136,6 @@ Manual steps (equivalent to the script):
   - Export the driver path:
     - `export EPD_LIB_PATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib`
   - Cloning into the project root as `./e-Paper` or `./Touch_e-Paper_HAT` also works; `_load_driver` scans both.
-- Community package (fallback, support varies by platform): `pip install waveshare-epd`
 
 5) Verify environment (recommended)
 - `python check_env.py`
@@ -178,12 +211,10 @@ pip install --prefer-binary smbus2  # fallback when python3-smbus is unavailable
 # Non-touch HATs
 git clone https://github.com/waveshare/e-Paper ~/e-Paper
 export PYTHONPATH=~/e-Paper/RaspberryPi_Jetson_Nano/python/lib:$PYTHONPATH
-# Community package (fallback)
-pip install waveshare-epd
 ```
 
 If you use the touch HAT, ensure I2C remains enabled (`sudo raspi-config` → Interface Options → I2C) and that the GT1151 device shows up on `/dev/i2c-1`.
-Install an I2C backend for Python (`sudo apt install python3-smbus` for the distro interpreter, and `pip install smbus2` inside the venv) so the touch controller can talk over I2C. For GPIO interrupts install `pigpio` or `lgpio` (both instructions above) and pick the backend at runtime via `export GPIOZERO_PIN_FACTORY=pigpio` (recommended) or `export GPIOZERO_PIN_FACTORY=lgpio`.
+Install an I2C backend for Python (`sudo apt install python3-smbus` for the distro interpreter, and `pip install smbus2` inside the venv) so the touch controller can talk over I2C. For GPIO inter[...]
 
 To wipe the display when shutting down, run:
 
@@ -192,7 +223,7 @@ python lunar_pi_skyfield.py --backend epd --epd-variant TP_V4 --epd-clear
 # or explicitly force the touch driver auto-detection
 python lunar_pi_skyfield.py --backend epd --epd-touch --epd-clear
 ```
-`--no-sleep` keeps the panel awake after clearing if you plan to refresh immediately again. The normal render path clears automatically after the configured `--epd-auto-clear-delay` (10 minutes by default) to prevent long-term ghosting.
+`--no-sleep` keeps the panel awake after clearing if you plan to refresh immediately again. The normal render path clears automatically after the configured `--epd-auto-clear-delay` (10 minutes b[...]
 
 7) Verify environment and run
 
@@ -201,7 +232,7 @@ python check_env.py
 python lunar_pi_skyfield.py --backend epd --epd-variant auto --rotate 0
 ```
 
-If pip keeps trying to build from source, ensure you included the `--extra-index-url https://www.piwheels.org/simple` flag and `--prefer-binary --only-binary=:all:`; alternatively, you can set these via pip config for your user:
+If pip keeps trying to build from source, ensure you included the `--extra-index-url https://www.piwheels.org/simple` flag and `--prefer-binary --only-binary=:all:`; alternatively, you can set th[...]
 
 ```bash
 # Optional: persist piwheels and prefer binaries
@@ -209,6 +240,3 @@ pip config set global.extra-index-url https://www.piwheels.org/simple
 pip config set global.prefer-binary true
 pip config set global.only-binary :all:
 ```
-
-# rbpi_eink_2.13
-RBPi Lunar Tracker - RBPi Z &amp; E-ink display
