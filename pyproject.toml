@@ -1,0 +1,111 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "selenipilite"
+version = "0.1.0"
+description = "Raspberry Pi lunar phase tracker with e-ink display support"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "fpc26", email = "211817249+fpc26@users.noreply.github.com"}
+]
+keywords = ["raspberry-pi", "e-ink", "lunar", "moon", "waveshare", "astronomy"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: System :: Hardware",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "pillow>=10",
+    "skyfield>=1.53",
+    "numpy>=1.26",
+    "sgp4>=2.20",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "flake8>=6.0",
+    "mypy>=1.0",
+    "pre-commit>=3.0",
+]
+rpi = [
+    # Raspberry Pi specific dependencies (install on Pi only)
+    # These are typically installed via system packages:
+    # sudo apt install python3-rpi.gpio python3-spidev python3-smbus
+]
+
+[project.urls]
+Homepage = "https://github.com/fpc26/SeleniPiLite"
+Repository = "https://github.com/fpc26/SeleniPiLite"
+Issues = "https://github.com/fpc26/SeleniPiLite/issues"
+Changelog = "https://github.com/fpc26/SeleniPiLite/blob/main/CHANGELOG.md"
+
+[project.scripts]
+lunar-pi = "lunar_pi_skyfield:main"
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/.venv/*",
+    "*/venv/*",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
